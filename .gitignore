@@ -7,14 +7,31 @@ config/*.env
 config/*.local.*
 *.pem
 *.key
+*.crt
+*.cer
+*.jks
 *.p12
 *.pfx
 
 # Runtime output
-reports/**
-!reports/.gitkeep
+report/product-result/**
+!report/product-result/
+!report/product-result/*/
+!report/product-result/*/.gitkeep
+report/tc_registry/**
+!report/tc_registry/**/
+!report/tc_registry/**/README.md
 logs/**
 !logs/.gitkeep
+!logs/README.md
+products/*/config/*.env
+products/*/config/ids/*
+products/*/config/certs/**
+!products/*/config/README.md
+!products/*/config/ids/README.md
+!products/*/config/certs/README.md
+tools/*
+!tools/README.md
 tmp/
 *.log
 
