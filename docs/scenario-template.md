@@ -1,22 +1,22 @@
-# Scenario: <short descriptive name>
+# 시나리오: <간단한 이름>
 
-## Purpose
+## 목적
 
-Describe one API behavior in a sentence.
+검증할 API 동작 하나를 한 문장으로 설명합니다.
 
-## Preconditions
+## 사전 조건
 
-- Required service state:
-- Required permissions:
-- Test data source:
+- 필요한 서비스 상태:
+- 필요한 권한:
+- 테스트 데이터 출처:
 
-## Steps
+## 단계
 
-1. Validate configuration and prerequisites.
-2. Submit the request through the shared HTTP helper.
-3. Assert the expected status and response fields.
-4. Clean up resources created by this scenario.
+1. 설정과 사전 조건을 확인합니다.
+2. 공통 HTTP 함수를 통해 요청을 보냅니다.
+3. 응답 상태와 필요한 필드를 검증합니다.
+4. 이 시나리오에서 만든 리소스만 정리합니다.
 
-## Evidence
+## 증적
 
-Record request method and path, response status, elapsed time, and a sanitized result summary. Do not record authorization headers, tokens, secrets, or personal/customer data.
+요청 방식과 경로, 응답 상태, 처리 시간, 민감 정보를 제거한 결과 요약을 기록합니다. 인증 헤더, 토큰, 비밀값, 고객 데이터는 기록하지 않습니다.

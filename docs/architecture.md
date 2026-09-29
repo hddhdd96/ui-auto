@@ -1,31 +1,27 @@
-# Architecture
-
-## Execution flow
+# 구조와 실행 흐름
 
 ```text
-scripts/run-suite.sh
-  └── products/<product>/run.sh
-        └── scenarios/<scenario>.sh
-              ├── lib/auth.sh
-              ├── lib/http.sh
-              ├── lib/logger.sh
-              └── lib/report.sh
+run.sh
+  ├── products/product-a/main.sh
+  │     ├── products/product-a/scripts/...
+  │     └── lib/...
+  └── products/product-b/main.sh
+        ├── products/product-b/scripts/...
+        ├── products/product-b/templates/...
+        └── lib/...
+
+report/tc_registry → report/product-script → report/product-result
 ```
 
-## Responsibilities
-
-| Area | Responsibility |
+| 경로 | 책임 |
 | --- | --- |
-| `scripts/` | Select and launch a suite with consistent exit handling |
-| `products/` | Keep service-specific scenario sequencing together |
-| `lib/` | Provide shared request, auth, logging, and reporting functions |
-| `config/` | Document configuration keys without storing live credentials |
-| `reports/`, `logs/` | Hold generated output locally; never commit execution evidence with sensitive data |
+| `run.sh` | 제품 실행 진입점을 호출하는 전체 실행기 |
+| `products/<product>/main.sh` | 해당 제품 자동화의 실행 흐름 시작 |
+| `products/<product>/scripts/` | 공통 함수와 제품별 시나리오 |
+| `products/<product>/config/` | 로컬 환경, 리소스 ID, 인증서 설정 경계 |
+| `products/<product>/templates/` | API 요청 템플릿 위치 |
+| `lib/` | HTTP, 인증, 로깅과 환경 처리 등 공유 기능 |
+| `report/` | 케이스 등록 자료, 결과 처리 도구와 생성 결과 |
+| `logs/`, `tools/` | 로컬 로그와 폐쇄망 도구 위치 |
 
-## Scenario lifecycle
-
-Scenarios should validate prerequisites, perform one focused operation, check the response and resulting state, record a concise result, and clean up only resources created by that scenario. Shared helpers should return explicit status codes and useful error context.
-
-## Safe extension points
-
-Replace example product groups and add verified request contracts when adapting this layout. Keep secret resolution outside scenario files and sanitize response bodies before writing evidence.
+샘플에는 폴더와 실행 차단용 진입점만 있습니다. 실제 API 호출, 환경 설정, 요청 데이터, 실행 도구와 증적은 포함하지 않습니다.

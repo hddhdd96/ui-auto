@@ -1,3 +1,3 @@
-# Shared library
+# 공통 라이브러리
 
-Add reusable shell interfaces here for authentication, HTTP requests, logging, and reporting. Keep product-specific paths, payloads, and assertions inside `products/` scenarios. Use strict shell options and return explicit error codes in executable implementations.
+여러 제품에서 공유하는 인증, HTTP 요청, 로깅과 리포트 처리를 둘 수 있는 위치입니다. 제품별 경로, 요청 데이터와 검증 로직은 각 제품 시나리오에 둡니다.
