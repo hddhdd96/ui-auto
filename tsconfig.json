@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": [
+    "auth/**/*.ts",
+    "pages/**/*.ts",
+    "fixtures/**/*.ts",
+    "data/**/*.ts",
+    "utils/**/*.ts",
+    "tests/**/*.ts",
+    "playwright.config.ts"
+  ]
+}

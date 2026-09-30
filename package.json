@@ -1,0 +1,21 @@
+{
+  "name": "ui-auto",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sanitized Playwright UI automation portfolio for private cloud QA",
+  "scripts": {
+    "test": "playwright test",
+    "test:demo": "playwright test --project=demo",
+    "test:e2e": "playwright test --project=chromium",
+    "test:headed": "playwright test --project=chromium --headed",
+    "test:unit": "playwright test --project=unit",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^22.10.0",
+    "dotenv": "^16.4.7",
+    "typescript": "^5.8.3"
+  }
+}
