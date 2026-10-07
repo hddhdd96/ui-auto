@@ -17,19 +17,19 @@ Private Cloud 콘솔의 **반복 UI 회귀 테스트**를 Playwright + TypeScrip
 
 ## Results
 
-업무 기준(개인 담당 범위)의 자동화 성과입니다.
+업무 기준 자동화 범위와 개인 구현 범위를 구분해 표기합니다.
 
 | Metric | Value |
 |---|---|
 | Regression TC | 65 |
 | Automation Target | 60 |
-| Automated | 60 |
-| Implementation rate | **60 / 60 automation target = 100%** |
-| Overall (of 65) | **60 / 65 regression test cases automated** |
+| Team Automated | 60 / 60 |
+| Personally Designed & Implemented UI E2E Scenarios | 20 |
 | Defects found via automation | 약 3건 |
 
-> “Automation Coverage 100%”처럼 65개 전체를 자동화한 표현은 사용하지 않습니다.
-
+- 회귀 대상 65 TC 중 환경 제약 5 TC를 제외한 60 TC를 QA팀에서 자동화했습니다.
+- 이 중 UI E2E 시나리오 20개를 직접 설계·구현했습니다.
+- 공개 저장소는 실무 프로젝트 전체 코드를 옮긴 것이 아니라 구조와 설계 경험을 공개 가능한 형태로 재구성한 Demo입니다.
 ---
 
 ## Background
