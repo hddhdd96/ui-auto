@@ -1,25 +1,19 @@
 import { expect, type Page } from '@playwright/test';
 import { BasePage } from '../BasePage';
 
-/** 로그인 화면. 원본 support/auth의 폼 입력·대시보드 진입을 일반화 */
 export class LoginPage extends BasePage {
-  private readonly username = this.page.getByLabel(/username|사용자/i).or(
-    this.page.locator('input[name="username"]'),
-  );
-  private readonly password = this.page.getByLabel(/password|비밀번호/i).or(
-    this.page.locator('input[name="password"]'),
-  );
-  private readonly submit = this.page.getByRole('button', { name: /log\s*in|로그인|sign\s*in/i });
+  private readonly username = this.page.getByLabel('Username', { exact: true });
+  private readonly password = this.page.getByLabel('Password', { exact: true });
+  private readonly submit = this.page.getByRole('button', { name: 'Log in', exact: true });
+  private readonly signedInUser = this.page.getByRole('status', { name: 'Signed in user', exact: true });
+  constructor(page: Page) { super(page); }
 
-  constructor(page: Page) {
-    super(page);
-  }
-
-  async login(user: string, pass: string): Promise<void> {
+  async login(user: string, password: string): Promise<void> {
     await this.gotoPath('/login');
-    await this.username.first().fill(user);
-    await this.password.first().fill(pass);
-    await this.submit.first().click();
-    await expect(this.page).not.toHaveURL(/login/i, { timeout: 60_000 });
+    await this.username.fill(user);
+    await this.password.fill(password);
+    await this.submit.click();
+    await expect(this.page).toHaveURL(/\/volumes$/);
+    await expect(this.signedInUser).toHaveText(user);
   }
 }
