@@ -4,13 +4,14 @@
   "private": true,
   "description": "Sanitized Playwright UI automation portfolio for private cloud QA",
   "scripts": {
-    "test": "playwright test",
-    "test:demo": "playwright test --project=demo",
+    "test": "playwright test --project=unit --project=chromium --project=demo",
+    "test:demo": "playwright test --project=chromium --project=demo",
     "test:e2e": "playwright test --project=chromium",
     "test:headed": "playwright test --project=chromium --headed",
     "test:unit": "playwright test --project=unit",
     "report": "playwright show-report",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:external": "playwright test --project=external"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

@@ -1,28 +1,27 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { BasePage } from '../BasePage';
 
-/** Compute Instance. 원본 Nova create + ACTIVE 대기 흐름을 일반화 */
+/** Reference contract: the local demo implements volumes, not compute. */
 export class InstancePage extends BasePage {
-  private readonly computeNav = this.page.getByRole('link', { name: 'Compute', exact: true });
-  private readonly instancesHeading = this.page.getByRole('heading', { name: /Instances/i });
-  private readonly createButton = this.page.getByRole('button', { name: /Create instance/i });
-
-  constructor(page: Page) {
-    super(page);
-  }
+  private readonly heading = this.page.getByRole('heading', { name: 'Instances', exact: true });
+  private readonly rows = new Map<string, Locator>();
+  constructor(page: Page) { super(page); }
 
   async openInstances(): Promise<void> {
-    await this.computeNav.click();
-    await this.waitVisible(this.instancesHeading);
+    await this.gotoPath('/instances');
+    await expect(this.heading).toBeVisible();
   }
 
   instanceRow(name: string): Locator {
-    return this.page.getByRole('row').filter({ hasText: name });
+    let row = this.rows.get(name);
+    if (!row) {
+      row = this.page.getByRole('row').filter({ has: this.page.getByRole('cell', { name, exact: true }) });
+      this.rows.set(name, row);
+    }
+    return row;
   }
 
-  async waitUntilActive(name: string, timeout = 10 * 60_000): Promise<void> {
-    await expect(this.instanceRow(name).getByText(/Active|ACTIVE/i).first()).toBeVisible({
-      timeout,
-    });
+  async waitUntilActive(name: string): Promise<void> {
+    await expect(this.instanceRow(name).getByTestId('instance-status')).toHaveText('ACTIVE');
   }
 }

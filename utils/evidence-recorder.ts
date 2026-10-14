@@ -9,7 +9,8 @@ export class EvidenceRecorder {
 
   async capture(stepName: string): Promise<void> {
     const buffer = await this.page.screenshot({ fullPage: true });
-    await this.testInfo.attach(stepName, {
+    const tcId = this.testInfo.annotations.find(annotation => annotation.type === 'tc-id')?.description ?? 'unassigned';
+    await this.testInfo.attach(`${tcId}__${stepName}`, {
       body: buffer,
       contentType: 'image/png',
     });
