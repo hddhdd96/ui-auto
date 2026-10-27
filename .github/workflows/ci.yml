@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run typecheck
+      # retries: 0, maxFailures: 1, CI에서는 test.only 금지(forbidOnly). 실패를 재시도로 가리지 않는다.
+      - run: npm test
+      - name: Upload report and evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-evidence
+          path: |
+            report/
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
