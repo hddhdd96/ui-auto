@@ -17,6 +17,8 @@ export type TriageInput = {
   pageSnapshot: string;
   /** 실패 시 기록된 네트워크 문제(network-log.json). 한 줄에 요청 하나. */
   network: string;
+  /** 실패한 테스트 함수 본문(입력값·기대값 확인용). 태그·TC-ID 줄은 뺀다. */
+  testCode: string;
 };
 
 export type Verdict = {
