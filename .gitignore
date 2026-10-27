@@ -11,3 +11,4 @@ log/
 *.zip
 .DS_Store
 __pycache__/
+triage-lab/results/

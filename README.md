@@ -25,6 +25,8 @@ npm run report
 | `npm run test:unit` | 이름 고유성, 정리 실패 보존, 결과 분류 |
 | `npm run test:e2e` | 로그인 + 대표 볼륨 lifecycle |
 | `npm run test:external` | 별도 TodoMVC 예제. 인터넷 필요, 기본 검증에는 포함하지 않음 |
+| `npm run triage` | 직전 실행의 실패 원인 후보를 `report/tc-triage.json`에 기록 (선택, 아래 참고) |
+| `npm run triage:lab` | 일부러 만든 실패 15개로 원인 분류 정확도 측정 |
 
 ## 대표 사례
 
@@ -67,6 +69,9 @@ Test → fixture → Flow → Page Object / API client
 | `fixtures/base-test.ts` | 객체 주입, 실패 후 정리, 정리 기록 첨부 |
 | `utils/resource-cleanup.ts` | 생성 결과가 불확실한 자원과 정리 실패 추적 |
 | `reporters/failure-summary.ts` | 원본 오류를 유지하는 TC별 결과 요약 |
+| `utils/network-log.ts` | 실패한 테스트에만 네트워크 증적(4xx/5xx, 전송 실패, 지연 요청) 첨부 |
+| `triage/` | 실패 원인 후보 분류(규칙 기반 기준선 + AI), 근거 원문 검증 |
+| `triage-lab/`, `tests/triage-lab/` | 정답이 있는 실패 15개와 측정 스크립트 |
 | `demo/` | Node 표준 라이브러리로 만든 로컬 UI·API |
 | `auth/` | 사용자 확인 후 storageState 저장 |
 | `tests/testsuite/`, `tests/demo/` | 대표 lifecycle, 실패 경로 데모 |
@@ -118,3 +123,25 @@ python3 guardrail/check_test_weakening.py --base origin/main                    
 ```
 
 diff 기반 휴리스틱이므로 모든 약화를 잡지는 않습니다. 이 저장소의 과거 커밋에 적용해 오탐을 줄였고, 최종 판단은 사람이 diff와 근거를 보고 내립니다.
+
+## AI 실패 원인 1차 분류 (선택)
+
+실패가 여러 건이면 제품 결함·스크립트 문제·환경 문제를 먼저 가르는 데 시간이 듭니다. `npm run triage`는 `report/tc-summary.json`의 FAIL/BLOCK 행을 읽어 원인 후보와 근거를 `report/tc-triage.json`에 따로 씁니다.
+
+- 판정(PASS/FAIL/BLOCK)과 원본 오류는 바꾸지 않습니다. 결과는 사람이 확인할 후보입니다.
+- 입력은 오류 메시지·코드 위치, 실패 시점 화면 스냅샷, 실패한 테스트에만 남기는 네트워크 기록(`network-log.json`)입니다. TC-ID와 파일 경로는 넣지 않습니다.
+- AI는 근거를 원문에서 그대로 인용해야 합니다. 원문에 없는 근거는 버리고, 근거가 남지 않으면 `판단 보류`로 내립니다. API 호출은 자동 재시도하지 않고, 무료 등급 한도에 맞춰 호출 간격만 둡니다.
+- 기본 제공자는 Gemini API 무료 등급(`gemini-3.8-flash`, `GEMINI_API_KEY`)이고, `TRIAGE_PROVIDER=anthropic`으로 Claude(`ANTHROPIC_API_KEY`)를 쓸 수 있습니다. 키가 없으면 규칙 기반 후보만 만듭니다. CI는 테스트가 실패했을 때만 이 단계를 실행합니다.
+- 무료 등급 입력은 Google 제품 개선에 쓰일 수 있으므로 데모 데이터에만 사용합니다. 실제 업무 로그를 보낼 때는 유료 등급 또는 사내 승인된 모델을 씁니다.
+
+### 분류 정확도 측정
+
+`triage-lab/cases.ts`에 일부러 만든 실패 15개와 정답이 있습니다. 제품 결함은 데모 서버의 `DEMO_FAULT`(상태 INACTIVE, 크기 불일치, 삭제 미반영, 목록 중복, 500)로, 스크립트 결함은 `tests/triage-lab/`의 잘못된 테스트(Locator 오타, 입력과 다른 기대값, strict mode 위반, 고정 이름 재사용, API 경로 오타)로, 환경 결함은 서버 미기동·세션 만료·응답 지연·브라우저 미설치·연결 끊김으로 만듭니다. `npm run triage:lab` 또는 Actions의 **Triage eval**(수동 실행)로 같은 15개를 재현해 정답과 비교합니다.
+
+| 방식 | 일치 | 제품 | 스크립트 | 환경 |
+|---|---|---|---|---|
+| 규칙 기반 (기준선) | 10/15 (67%) | 5/5 | 2/5 | 3/5 |
+| AI (Gemini 3.8 Flash) | Triage eval 실행 후 기재 | | | |
+
+측정을 준비하며 `생성 대화상자가 닫히지 않음`이라는 같은 오류가 서버 500, 중복 이름 409, 응답 지연, 연결 끊김 네 가지 원인에서 나오는 것을 확인했습니다. 모달 때문에 화면의 오류 문구도 스냅샷에 남지 않았습니다. 그래서 분류기를 손보기 전에 실패 증적에 네트워크 기록을 추가했고, AI 측정은 네트워크 기록을 뺀 입력으로 한 번 더 돌려 증적 보강 효과를 따로 기록합니다.
+
