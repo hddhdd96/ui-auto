@@ -10,3 +10,4 @@ log/
 *.webm
 *.zip
 .DS_Store
+__pycache__/

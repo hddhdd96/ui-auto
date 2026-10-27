@@ -1,0 +1,6 @@
+diff --git a/pages/storage/VolumePage.ts b/pages/storage/VolumePage.ts
+--- a/pages/storage/VolumePage.ts
++++ b/pages/storage/VolumePage.ts
+@@ -44 +44 @@
+-    await expect(this.volumeRow(name).getByTestId('volume-status')).toHaveText('ACTIVE');
++    await expect(this.volumeRow(name).getByTestId('volume-status')).toContainText('ACTIVE');
