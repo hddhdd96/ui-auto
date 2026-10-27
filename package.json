@@ -11,12 +11,15 @@
     "test:unit": "playwright test --project=unit",
     "report": "playwright show-report",
     "typecheck": "tsc --noEmit",
-    "test:external": "playwright test --project=external"
+    "test:external": "playwright test --project=external",
+    "triage": "tsx triage/cli.ts",
+    "triage:lab": "tsx triage-lab/run-lab.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.10.0",
     "dotenv": "^16.4.7",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.3"
   }
 }

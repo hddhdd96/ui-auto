@@ -6,6 +6,7 @@ import { EvidenceRecorder } from '../utils/evidence-recorder';
 import { ResourceCleanup } from '../utils/resource-cleanup';
 import { VolumeClient } from '../services/volume-client';
 import { VolumeLifecycle } from '../flows/volume-lifecycle';
+import { NetworkLog } from '../utils/network-log';
 
 type AppFixtures = {
   volumePage: VolumePage;
@@ -15,10 +16,17 @@ type AppFixtures = {
   volumeClient: VolumeClient;
   resources: ResourceCleanup;
   volumeLifecycle: VolumeLifecycle;
+  networkLog: NetworkLog;
 };
 
 // Product-style fixture injection without copying environment-specific code.
 export const test = base.extend<AppFixtures>({
+  // 실패 시에만 네트워크 증적(network-log.json)을 남긴다. 판정에는 관여하지 않는다.
+  networkLog: [async ({ page }, use, testInfo) => {
+    const log = new NetworkLog(page);
+    await use(log);
+    await log.attachIfFailed(testInfo);
+  }, { auto: true }],
   volumePage: async ({ page }, use) => { await use(new VolumePage(page)); },
   instancePage: async ({ page }, use) => { await use(new InstancePage(page)); },
   loginPage: async ({ page }, use) => { await use(new LoginPage(page)); },
