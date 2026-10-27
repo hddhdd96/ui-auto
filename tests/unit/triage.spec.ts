@@ -89,7 +89,7 @@ const geminiReply = (verdict: Record<string, unknown>) => ({
 test('provider is chosen from environment keys, Gemini first', () => {
   expect(aiConfigFromEnv({})).toBeNull();
   expect(aiConfigFromEnv({ GEMINI_API_KEY: 'g', ANTHROPIC_API_KEY: 'a' })).toEqual({
-    provider: 'gemini', apiKey: 'g', model: 'gemini-3.8-flash', minIntervalMs: 6000, workspaceId: undefined,
+    provider: 'gemini', apiKey: 'g', model: 'gemini-3.5-flash-lite', minIntervalMs: 6000, workspaceId: undefined,
   });
   expect(aiConfigFromEnv({ ANTHROPIC_API_KEY: 'a', TRIAGE_MODEL: 'claude-sonnet-5-5' }))
     .toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-5-5', minIntervalMs: 0 });
