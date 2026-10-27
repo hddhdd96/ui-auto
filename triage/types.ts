@@ -3,7 +3,7 @@ export const CATEGORIES = ['product', 'script', 'environment', 'unknown'] as con
 export type Category = typeof CATEGORIES[number];
 
 export const CATEGORY_LABEL: Record<Category, string> = {
-  product: '제품', script: '스크립트', environment: '환경', unknown: '판단 보류',
+  product: '제품 결함', script: '스크립트 문제', environment: '환경 문제', unknown: '판단 보류',
 };
 
 /** 분류기에 넘기는 입력. 원본 tc-summary.json에서 읽기만 하고 수정하지 않는다. */

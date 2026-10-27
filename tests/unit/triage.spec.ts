@@ -89,7 +89,7 @@ const geminiReply = (verdict: Record<string, unknown>) => ({
 test('provider is chosen from environment keys, Gemini first', () => {
   expect(aiConfigFromEnv({})).toBeNull();
   expect(aiConfigFromEnv({ GEMINI_API_KEY: 'g', ANTHROPIC_API_KEY: 'a' })).toEqual({
-    provider: 'gemini', apiKey: 'g', model: 'gemini-3.8-flash', minIntervalMs: 6000, workspaceId: undefined,
+    provider: 'gemini', apiKey: 'g', model: 'gemini-3.5-flash-lite', minIntervalMs: 6000, workspaceId: undefined,
   });
   expect(aiConfigFromEnv({ ANTHROPIC_API_KEY: 'a', TRIAGE_MODEL: 'claude-sonnet-5-5' }))
     .toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-5-5', minIntervalMs: 0 });
@@ -142,4 +142,15 @@ test('without AI config only the rule baseline runs and AI errors stay visible',
   const withError = await triage([failure], 'report/tc-summary.json', { ai: gemini, fetchImpl: impl });
   expect(withError).toMatchObject({ model: 'gemini:gemini-3.8-flash', items: [{ ai: null, aiError: expect.stringContaining('Gemini API 500') }] });
   expect(calls).toHaveLength(1);
+});
+
+test('a key or request-format error stops further AI calls instead of repeating the same failure', async () => {
+  const { impl, calls } = fakeFetch({ error: { message: 'API key not valid' } }, 400);
+  const report = await triage([failure, { ...failure, tcId: 'DEMO-VOL-002' }], 'triage-lab', { ai: gemini, fetchImpl: impl });
+  expect(calls).toHaveLength(1);
+  expect(report.items.map(item => item.aiError)).toEqual([
+    'Gemini API 400: API key not valid',
+    '건너뜀(앞선 설정 오류): Gemini API 400: API key not valid',
+  ]);
+  expect(report.items.map(item => item.rule.category)).toEqual(['product', 'product']);
 });
