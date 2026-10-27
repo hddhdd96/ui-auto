@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { aiConfigFromEnv, classifyWithAi, failurePrompt, type AiConfig } from '../../triage/ai';
+import { applyGate } from '../../triage/gate';
 import { groundVerdict } from '../../triage/ground';
 import { buildTriageInputs, networkFrom, pageSnapshotFrom, testCodeFrom } from '../../triage/input';
 import { classifyByRules } from '../../triage/rules';
@@ -187,4 +188,23 @@ test('prompt carries the contract and test code, and contract quotes cannot serv
   expect(onlyContract).toMatchObject({ category: 'unknown', droppedEvidence: 1 });
   const fromTestCode = groundVerdict({ category: 'product', confidence: 'high', evidence: ['createAndVerify(name, DEFAULT_VOLUME_SIZE_GIB)'], reason: '' }, failure);
   expect(fromTestCode).toMatchObject({ category: 'product', droppedEvidence: 0 });
+});
+
+test('safety gate turns an answer into "needs check" when the record points the other way', () => {
+  const productVerdict = { category: 'product' as const, confidence: 'high' as const, evidence: [], reason: '' };
+  const slow = applyGate({ ...failure, network: 'GET /api/v1/volumes -> completed after 11004ms' }, productVerdict, productVerdict);
+  expect(slow).toMatchObject({ category: 'unknown', conflict: 'GET /api/v1/volumes -> completed after 11004ms' });
+  const caseOnly = applyGate({
+    ...failure, network: '', errors: [{ message: 'Expected: "Active"\nReceived: "ACTIVE"', snippet: '', file: '' }],
+  }, productVerdict, productVerdict);
+  expect(caseOnly).toMatchObject({ category: 'unknown', conflict: 'Expected: "Active" / Received: "ACTIVE"' });
+});
+
+test('safety gate keeps an answer that its evidence agrees with, and falls back to the rule without AI', () => {
+  const productVerdict = { category: 'product' as const, confidence: 'high' as const, evidence: [], reason: '' };
+  expect(applyGate(failure, productVerdict, productVerdict)).toMatchObject({ category: 'product' });
+  const scriptAi = { ...productVerdict, category: 'script' as const };
+  expect(applyGate(failure, productVerdict, scriptAi)).toMatchObject({ category: 'unknown', conflict: expect.stringContaining('-> 500') });
+  expect(applyGate(failure, productVerdict, null)).toMatchObject({ category: 'product', reason: '규칙 판단과 반대되는 증거 없음' });
+  expect(applyGate(failure, { ...productVerdict, category: 'unknown' }, null)).toMatchObject({ category: 'unknown' });
 });

@@ -3,7 +3,7 @@ export const CATEGORIES = ['product', 'script', 'environment', 'unknown'] as con
 export type Category = typeof CATEGORIES[number];
 
 export const CATEGORY_LABEL: Record<Category, string> = {
-  product: '제품 결함', script: '스크립트 문제', environment: '환경 문제', unknown: '판단 보류',
+  product: '제품 결함', script: '스크립트 문제', environment: '환경 문제', unknown: '확인 필요',
 };
 
 /** 분류기에 넘기는 입력. 원본 tc-summary.json에서 읽기만 하고 수정하지 않는다. */
@@ -37,11 +37,15 @@ export type AiVerdict = Verdict & {
   usage?: { inputTokens: number; outputTokens: number };
 };
 
+/** 안전장치를 거친 최종 원인 후보. 반대 증거가 있으면 '확인 필요'(unknown)가 된다. */
+export type FinalVerdict = { category: Category; reason: string; conflict?: string };
+
 export type TriageItem = {
   tcId: string;
   testName: string;
   result: 'FAIL' | 'BLOCK';
   rule: Verdict;
+  final: FinalVerdict;
   ai: AiVerdict | null;
   aiError?: string;
 };
