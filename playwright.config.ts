@@ -31,6 +31,8 @@ export default defineConfig({
     { name: 'chromium', testMatch: 'tests/testsuite/**/*.spec.ts', dependencies: ['setup'], use: browser },
     { name: 'demo', testMatch: 'tests/demo/**/*.spec.ts', dependencies: ['setup'], use: browser },
     { name: 'unit', testDir: './tests/unit', testMatch: '**/*.spec.ts' },
+    // 실패 원인 분류 실험 전용. npm test에는 포함하지 않는다(npm run triage:lab).
+    { name: 'triage-lab', testMatch: 'tests/triage-lab/**/*.spec.ts', dependencies: ['setup'], use: { ...browser, actionTimeout: 10_000 } },
     { name: 'external', testMatch: 'tests/external/**/*.spec.ts', use: {
       ...devices['Desktop Chrome'], baseURL: 'https://demo.playwright.dev', storageState: { cookies: [], origins: [] },
     } },

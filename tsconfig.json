@@ -25,6 +25,8 @@
     "playwright.config.ts",
     "flows/**/*.ts",
     "services/**/*.ts",
-    "reporters/**/*.ts"
+    "reporters/**/*.ts",
+    "triage/**/*.ts",
+    "triage-lab/**/*.ts"
   ]
 }

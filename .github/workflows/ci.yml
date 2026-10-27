@@ -28,6 +28,16 @@ jobs:
       - run: npm run typecheck
       # retries: 0, maxFailures: 1, CI에서는 test.only 금지(forbidOnly). 실패를 재시도로 가리지 않는다.
       - run: npm test
+      # 실패했을 때만 원인 후보(참고용)를 report/tc-triage.json에 남긴다. 판정과 원본 오류는 바꾸지 않는다.
+      # Secret GEMINI_API_KEY(또는 ANTHROPIC_API_KEY)가 없으면 규칙 기반 후보만 만든다.
+      - name: Failure cause candidates (reference only)
+        if: failure() && hashFiles('report/tc-summary.json') != ''
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+        run: npm run triage
       - name: Upload report and evidence
         if: always()
         uses: actions/upload-artifact@v7
