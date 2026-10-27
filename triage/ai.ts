@@ -13,7 +13,8 @@ export type AiConfig = {
   workspaceId?: string;
 };
 
-export const DEFAULT_MODELS: Record<Provider, string> = { gemini: 'gemini-3.8-flash', anthropic: 'claude-haiku-5-5' };
+// 2026-10-27 측정 시 상위 Flash 모델은 무료 등급 혼잡(503)으로 응답하지 않아, 측정에 쓴 경량 모델을 기본으로 둔다.
+export const DEFAULT_MODELS: Record<Provider, string> = { gemini: 'gemini-3.5-flash-lite', anthropic: 'claude-haiku-5-5' };
 const DEFAULT_INTERVAL_MS: Record<Provider, number> = { gemini: 6_000, anthropic: 0 };
 
 /** 환경변수에서 설정을 읽는다. TRIAGE_PROVIDER가 없으면 GEMINI_API_KEY, ANTHROPIC_API_KEY 순으로 고른다. */
