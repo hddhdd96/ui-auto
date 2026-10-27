@@ -1,0 +1,52 @@
+name: Triage eval
+
+# 일부러 만든 실패 15개(제품·스크립트·환경 5개씩)를 재현하고 원인 분류 일치율을 측정한다.
+# 기본은 Gemini API 무료 등급(Secret GEMINI_API_KEY). 키가 없으면 규칙 기반 분류만 측정한다.
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: AI provider
+        type: choice
+        options: [gemini, anthropic]
+        default: gemini
+      model:
+        description: Model id (empty = provider default)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    name: triage accuracy (15 injected failures)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TRIAGE_PROVIDER: ${{ inputs.provider }}
+      TRIAGE_MODEL: ${{ inputs.model }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Anthropic 키를 워크스페이스로 범위 지정하지 않았을 때만 필요(선택)
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Note when the selected provider has no key
+        if: ${{ (inputs.provider == 'gemini' && env.GEMINI_API_KEY == '') || (inputs.provider == 'anthropic' && env.ANTHROPIC_API_KEY == '') }}
+        run: echo "::warning::No API key secret for ${TRIAGE_PROVIDER}; measuring the rule baseline only."
+      - name: Reproduce failures and classify
+        run: npm run triage:lab
+      - name: Upload inputs, verdicts and evaluation
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: triage-eval
+          path: triage-lab/results/
+          retention-days: 30
