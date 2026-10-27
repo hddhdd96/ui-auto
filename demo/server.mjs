@@ -9,10 +9,11 @@ const html = await readFile(new URL('./index.html', import.meta.url));
 
 // 실패 원인 분류 실험(triage-lab) 전용 결함 주입. 설정하지 않으면 정상 동작한다.
 // DEMO_FAULT: status-inactive | size-off-by-one | delete-noop | list-duplicates | create-500 | drop-api
+//             | name-truncated | delete-500
 // DEMO_LATENCY_MS: /api/v1 응답 지연(ms)
 const fault = process.env.DEMO_FAULT ?? '';
 const latencyMs = Number(process.env.DEMO_LATENCY_MS ?? 0);
-const knownFaults = ['', 'status-inactive', 'size-off-by-one', 'delete-noop', 'list-duplicates', 'create-500', 'drop-api'];
+const knownFaults = ['', 'status-inactive', 'size-off-by-one', 'delete-noop', 'list-duplicates', 'create-500', 'drop-api', 'name-truncated', 'delete-500'];
 if (!knownFaults.includes(fault)) throw new Error(`Unknown DEMO_FAULT: ${fault}`);
 if (fault || latencyMs) console.log(`[demo] fault injection active: fault=${fault || '-'} latencyMs=${latencyMs}`);
 
@@ -69,7 +70,7 @@ const server = createServer(async (request, response) => {
           }
           if (fault === 'create-500') return send(response, 500, { error: 'Internal error while allocating volume' });
           const volume = {
-            id: randomUUID(), name: body.name, sizeGiB: body.sizeGiB + (fault === 'size-off-by-one' ? 1 : 0),
+            id: randomUUID(), name: fault === 'name-truncated' ? body.name.slice(0, 20) : body.name, sizeGiB: body.sizeGiB + (fault === 'size-off-by-one' ? 1 : 0),
             status: fault === 'status-inactive' ? 'INACTIVE' : 'ACTIVE', bootable: true,
           };
           volumes.set(volume.id, volume);
@@ -79,6 +80,7 @@ const server = createServer(async (request, response) => {
       if (request.method === 'DELETE' && url.pathname.startsWith('/api/v1/volumes/')) {
         const id = url.pathname.split('/').at(-1);
         if (fault === 'delete-noop') return send(response, volumes.has(id) ? 204 : 404, {});
+        if (fault === 'delete-500') return send(response, 500, { error: 'Storage backend rejected the delete request' });
         return send(response, volumes.delete(id) ? 204 : 404, {});
       }
       return send(response, 404, { error: 'Unknown endpoint' });

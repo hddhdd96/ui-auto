@@ -12,7 +12,7 @@ import { evaluate, evaluationMarkdown, type LabOutcome } from '../triage/evaluat
 import { buildTriageInputs, readSummary } from '../triage/input';
 import { triage } from '../triage/triage';
 import type { TriageInput } from '../triage/types';
-import { LAB_CASES, type LabCase } from './cases';
+import { caseSet, LAB_CASES, type LabCase } from './cases';
 
 const ROOT = path.resolve(__dirname, '..');
 const RESULTS = path.join(ROOT, 'triage-lab', 'results');
@@ -34,6 +34,7 @@ function reproduce(labCase: LabCase, emptyDir: string): { input: TriageInput | n
     const prepared = runPlaywright(labCase.prepare.args, resolveEnv(labCase.prepare.env));
     if (prepared.status !== 0) return { input: null, problem: '준비 실행 실패', log: prepared.stdout + prepared.stderr };
   }
+  for (const file of labCase.removeFiles ?? []) rmSync(path.join(ROOT, file), { force: true });
   const run = runPlaywright(labCase.args, resolveEnv(labCase.env));
   const log = `${run.stdout ?? ''}${run.stderr ?? ''}`;
   if (run.status === 0) return { input: null, problem: '실패가 재현되지 않음(테스트 통과)', log };
@@ -46,7 +47,8 @@ function reproduce(labCase: LabCase, emptyDir: string): { input: TriageInput | n
 async function main(): Promise<void> {
   const onlyIndex = process.argv.indexOf('--only');
   const only = onlyIndex > 0 ? new Set(process.argv[onlyIndex + 1].split(',')) : null;
-  const cases = LAB_CASES.filter(labCase => !only || only.has(labCase.id));
+  // --only는 케이스 ID(P1,HS2) 또는 세트 이름(tuning, holdout)을 받는다.
+  const cases = LAB_CASES.filter(labCase => !only || only.has(labCase.id) || only.has(caseSet(labCase)));
   const ai = process.argv.includes('--no-ai') ? null : aiConfigFromEnv();
   rmSync(RESULTS, { recursive: true, force: true });
   mkdirSync(RESULTS, { recursive: true });
@@ -74,7 +76,7 @@ async function main(): Promise<void> {
     const index = input ? next++ : -1;
     const ablated = withoutNetwork && index >= 0 ? withoutNetwork.items[index] : null;
     return {
-      id: labCase.id, expected: labCase.expected, description: labCase.description,
+      id: labCase.id, set: caseSet(labCase), expected: labCase.expected, description: labCase.description,
       item: index >= 0 ? report.items[index] : null, problem,
       aiWithoutNetwork: ablated ? ablated.ai?.category ?? (ablated.aiError ? 'unknown' : null) : undefined,
     };
