@@ -1,5 +1,7 @@
 # Private Cloud UI Test Automation
 
+[![CI](https://github.com/hddhdd96/ui-auto/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hddhdd96/ui-auto/actions/workflows/ci.yml)
+
 Playwright + TypeScript로 클라우드 콘솔 QA의 **생성 → 상태 검증 → 증적 → 삭제** 흐름을 공개용으로 재구성한 데모입니다. 회사 계정 없이 로컬에서 실행합니다.
 
 ## 바로 실행
@@ -90,3 +92,29 @@ Test → fixture → Flow → Page Object / API client
 ## 실패 처리 원칙
 
 자동 retry는 0이며 첫 실패에서 실행을 중단합니다. 기대값을 완화하거나 실패를 skip하지 않습니다. 실패가 발생하면 원본 오류와 증적을 확인하고, 필요 시 해당 실패만 단독 1회 재검사한 뒤 원인과 수정안을 검토합니다.
+
+## CI 가드레일
+
+`main` push와 모든 PR에서 GitHub Actions가 `npm run typecheck`와 `npm test`를 실행합니다(retry 0, CI에서 `test.only` 금지). 실패 여부와 관계없이 `report/tc-summary.json`, HTML report, screenshot·video·trace를 artifact로 14일 보관합니다.
+
+AI 코딩 도구가 실패한 테스트를 고치면서 제품 대신 판정 조건을 바꿔 PASS로 만드는 일을 실무에서 겪었습니다. 이 원칙을 리뷰 습관이 아니라 파이프라인이 강제하도록, PR 단계에서 `guardrail/check_test_weakening.py`(Python 3.9 이상, 표준 라이브러리만 사용)가 판정 코드 diff를 검사하고 의심 변경이 있으면 job을 실패시킵니다.
+
+| 규칙 | 잡아내는 변경 (예) |
+|---|---|
+| TW01·TW02 | PR 전체에서 assertion·실패 경로 또는 테스트 케이스 순감소 (파일 간 이동은 허용) |
+| TW03 | `test.skip` / `test.only` / `test.fixme` / `test.fail` 추가 |
+| TW04 | retry 증가 (`retries: process.env.CI ? 2 : 0`) |
+| TW05 | 완전 일치 → 부분 일치 (`toHaveText('ACTIVE')` → `toContainText('ACTIVE')`: `INACTIVE`도 통과) |
+| TW06·TW09 | 기대값 변경, 허용 값 확대 (`toBe(204)` → `toBe(200)`, reporter의 BLOCK → PASS) |
+| TW07·TW08 | 실패 전파 제거·실패 무시(`throw` 삭제, 빈 `catch`), `expect(true)` 같은 항상 참인 판정 |
+| TW10·TW11 | 정확 일치 옵션 제거, 가드레일 규칙·범위·워크플로 자체 변경 |
+
+의도한 변경(제품 사양 변경 등)이면 PR 설명에 근거를 적고 `test-change-approved` 라벨을 붙입니다. 이때 발견 사항은 경고로 남고 job은 통과합니다. `main` 브랜치는 이 검사(`test-weakening guardrail`)를 병합 전 필수 체크로 지정했습니다. 검사 범위는 `guardrail/scope.txt`에서 관리합니다.
+
+```bash
+python3 -m unittest discover -s guardrail -v        # 실제 코드를 변형한 약화 사례 10건 + 정상 변경 5건
+python3 guardrail/check_test_weakening.py guardrail/examples/weaken-active-check.diff   # 상태 셀 `toHaveText` → `toContainText` → exit 1
+python3 guardrail/check_test_weakening.py --base origin/main                          # 현재 브랜치 검사
+```
+
+diff 기반 휴리스틱이므로 모든 약화를 잡지는 않습니다. 이 저장소의 과거 커밋에 적용해 오탐을 줄였고, 최종 판단은 사람이 diff와 근거를 보고 내립니다.

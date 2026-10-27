@@ -1,0 +1,15 @@
+# 판정이 들어 있는 경로만 검사합니다. (fnmatch glob, 저장소 루트 기준)
+tests/*
+pages/*
+flows/*
+services/*
+fixtures/*
+utils/*
+reporters/*
+auth/*
+playwright.config.ts
+package.json
+guardrail/check_test_weakening.py
+guardrail/scope.txt
+guardrail/test_*.py
+.github/workflows/*
