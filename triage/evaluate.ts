@@ -53,24 +53,29 @@ export function evaluationMarkdown(outcomes: LabOutcome[], model: string | null)
   const result = evaluate(outcomes);
   const lines = [
     '## 실패 원인 분류 측정', '',
-    `케이스 ${result.cases}개 (재현 ${result.reproduced}개) · AI 모델: ${model ?? '미사용'}`, '',
-    '| 방식 | 일치 | 일치율 | 판단 보류 | 제품 | 스크립트 | 환경 |', '|---|---|---|---|---|---|---|',
+    `측정 대상: 원인을 알고 일부러 만든 실패 ${result.cases}개 (실제로 재현된 실패 ${result.reproduced}개) · AI 모델: ${model ?? '미사용'}`, '',
+    '**읽는 법** · 실제 원인(정답): 실패를 만들 때 정해 둔 원인 · 규칙 분류: 오류 문구 패턴만 보고 고른 원인 · AI 분류: AI가 실패 기록을 읽고 고른 원인 · ✓ 맞힘 / ✗ 틀림 · 판단 보류: 근거가 부족해 고르지 않음', '',
+    '| 분류 방법 | 맞힌 수 | 정확도 | 판단 보류 | 제품 결함 | 스크립트 문제 | 환경 문제 |', '|---|---|---|---|---|---|---|',
   ];
-  for (const [name, method] of [['규칙 기반', result.rule], ['AI', result.ai], ['AI (네트워크 증적 제외)', result.aiWithoutNetwork]] as const) {
+  for (const [name, method] of [['규칙 분류 (오류 문구 패턴)', result.rule], ['AI 분류', result.ai], ['AI 분류 (네트워크 기록 없이)', result.aiWithoutNetwork]] as const) {
     if (!method) continue;
     const cat = (category: string) => `${method.byCategory[category]?.correct ?? 0}/${method.byCategory[category]?.total ?? 0}`;
     lines.push(`| ${name} | ${method.correct}/${method.total} | ${pct(method.accuracy)} | ${method.unknown} | ${cat('product')} | ${cat('script')} | ${cat('environment')} |`);
   }
   if (result.ai) {
-    lines.push('', `AI 근거 검증: 제시 ${result.evidence.submitted}개 중 원문 불일치로 버림 ${result.evidence.dropped}개 · API 오류 ${result.aiErrors}건 · 토큰 입력 ${result.tokens.input} / 출력 ${result.tokens.output}`);
+    lines.push('', `AI 근거 검증: AI가 인용한 근거 ${result.evidence.submitted}개 중 실패 기록에 없어 버린 근거 ${result.evidence.dropped}개 · API 오류 ${result.aiErrors}건 · 사용 토큰 입력 ${result.tokens.input} / 출력 ${result.tokens.output}`);
     const errors = [...new Set(outcomes.flatMap(outcome => (outcome.item?.aiError ? [outcome.item.aiError] : [])))];
     if (errors.length) lines.push('', 'API 오류 내용:', ...errors.slice(0, 5).map(error => `- ${error.replace(/\n/g, ' ').slice(0, 300)}`));
   }
-  lines.push('', '| 케이스 | 정답 | 규칙 기반 | AI | AI 근거(첫 번째) |', '|---|---|---|---|---|');
+  lines.push('', '| 일부러 만든 실패 | 실제 원인(정답) | 규칙 분류 | AI 분류 | AI가 실패 기록에서 인용한 근거 |', '|---|---|---|---|---|');
   for (const outcome of outcomes) {
     const item = outcome.item;
-    const mark = (category?: Category) => (category ? `${CATEGORY_LABEL[category]}${category === outcome.expected ? ' ✓' : ''}` : '-');
-    const ai = item?.ai ? mark(item.ai.category) : (item?.aiError ? '오류' : '-');
+    const mark = (category?: Category) => {
+      if (!category) return '-';
+      if (category === 'unknown') return CATEGORY_LABEL.unknown;
+      return `${CATEGORY_LABEL[category]} ${category === outcome.expected ? '✓' : '✗'}`;
+    };
+    const ai = item?.ai ? mark(item.ai.category) : (item?.aiError ? 'API 오류' : '-');
     const raw = item?.ai?.evidence[0] ?? (item?.aiError ? `오류: ${item.aiError}` : outcome.problem ?? '');
     const evidence = raw.replace(/\|/g, '\\|').replace(/\n/g, ' ').slice(0, 160);
     lines.push(`| ${outcome.id} ${outcome.description} | ${CATEGORY_LABEL[outcome.expected]} | ${mark(item?.rule.category)} | ${ai} | ${evidence} |`);
