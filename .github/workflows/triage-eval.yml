@@ -14,6 +14,10 @@ on:
         description: Model id (empty = provider default)
         required: false
         default: ''
+      cases:
+        description: Case ids to run, e.g. P5,E3 (empty = all 15)
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -42,7 +46,9 @@ jobs:
         if: ${{ (inputs.provider == 'gemini' && env.GEMINI_API_KEY == '') || (inputs.provider == 'anthropic' && env.ANTHROPIC_API_KEY == '') }}
         run: echo "::warning::No API key secret for ${TRIAGE_PROVIDER}; measuring the rule baseline only."
       - name: Reproduce failures and classify
-        run: npm run triage:lab
+        env:
+          CASES: ${{ inputs.cases }}
+        run: npm run triage:lab -- ${CASES:+--only "$CASES"}
       - name: Upload inputs, verdicts and evaluation
         if: always()
         uses: actions/upload-artifact@v7
