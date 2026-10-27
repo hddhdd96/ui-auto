@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { aiConfigFromEnv, classifyWithAi, failurePrompt, type AiConfig } from '../../triage/ai';
+import { applyGate } from '../../triage/gate';
 import { groundVerdict } from '../../triage/ground';
-import { buildTriageInputs, networkFrom, pageSnapshotFrom } from '../../triage/input';
+import { buildTriageInputs, networkFrom, pageSnapshotFrom, testCodeFrom } from '../../triage/input';
 import { classifyByRules } from '../../triage/rules';
 import { triage } from '../../triage/triage';
 import type { TriageInput } from '../../triage/types';
@@ -11,6 +12,7 @@ const failure: TriageInput = {
   errors: [{ message: 'Error: expect(locator).not.toBeVisible() failed\nReceived: visible', snippet: '> 40 | await expect(this.createDialog).not.toBeVisible();', file: 'VolumePage.ts', line: 40 }],
   pageSnapshot: '- dialog "Create volume"',
   network: 'POST /api/v1/volumes -> 500 {"error":"Internal error while allocating volume"}',
+  testCode: "test('volume creation is reflected in API and UI', {\n}, async ({ volumeLifecycle }) => {\n  await volumeLifecycle.createAndVerify(name, DEFAULT_VOLUME_SIZE_GIB);\n});",
 };
 
 function fakeFetch(payload: unknown, status = 200) {
@@ -40,7 +42,7 @@ test('triage input keeps only failed rows with errors and never mutates the summ
   expect(JSON.stringify(rows)).toBe(before);
   expect(inputs).toHaveLength(1);
   expect(inputs[0]).toEqual({
-    tcId: 'C', testName: 'fails', result: 'FAIL', pageSnapshot: '', network: '',
+    tcId: 'C', testName: 'fails', result: 'FAIL', pageSnapshot: '', network: '', testCode: '',
     errors: [{ message: 'Error: boom', snippet: 'code', file: 'c.spec.ts', line: 3 }],
   });
 });
@@ -90,6 +92,7 @@ test('provider is chosen from environment keys, Gemini first', () => {
   expect(aiConfigFromEnv({})).toBeNull();
   expect(aiConfigFromEnv({ GEMINI_API_KEY: 'g', ANTHROPIC_API_KEY: 'a' })).toEqual({
     provider: 'gemini', apiKey: 'g', model: 'gemini-3.5-flash-lite', minIntervalMs: 6000, workspaceId: undefined,
+    context: expect.stringContaining('POST /api/v1/volumes'),
   });
   expect(aiConfigFromEnv({ ANTHROPIC_API_KEY: 'a', TRIAGE_MODEL: 'claude-sonnet-5-5' }))
     .toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-5-5', minIntervalMs: 0 });
@@ -153,4 +156,55 @@ test('a key or request-format error stops further AI calls instead of repeating 
     '건너뜀(앞선 설정 오류): Gemini API 400: API key not valid',
   ]);
   expect(report.items.map(item => item.rule.category)).toEqual(['product', 'product']);
+});
+
+test('test code is extracted without TC-ID or tag lines', () => {
+  const source = [
+    "import { test } from '../../fixtures/base-test';",
+    '',
+    "test('created volume shows the requested size', {",
+    "  tag: '@reg-02', annotation: { type: 'tc-id', description: 'REG-02' },",
+    '}, async ({ volumePage }) => {',
+    '  const requestedSizeGiB = 20;',
+    '  await volumePage.createVolume(name, DEFAULT_VOLUME_SIZE_GIB);',
+    '  await volumePage.expectSize(name, requestedSizeGiB);',
+    '});',
+    '',
+    "test('another test', async () => {});",
+  ].join('\n');
+  const code = testCodeFrom(source, 'created volume shows the requested size');
+  expect(code).toContain('const requestedSizeGiB = 20;');
+  expect(code).toContain('expectSize(name, requestedSizeGiB)');
+  expect(code).not.toMatch(/REG-02|@reg-02|another test/);
+  expect(testCodeFrom(source, 'missing test')).toBe('');
+});
+
+test('prompt carries the contract and test code, and contract quotes cannot serve as evidence', () => {
+  const prompt = failurePrompt(failure, 'POST /api/v1/volumes {sizeGiB: positive integer} -> 201');
+  expect(prompt.indexOf('<contract>')).toBeLessThan(prompt.indexOf('<failure>'));
+  expect(prompt).toContain('## test code\ntest(\'volume creation is reflected in API and UI\'');
+  expect(prompt).not.toContain('DEMO-VOL-001');
+  const onlyContract = groundVerdict({ category: 'script', confidence: 'high', evidence: ['sizeGiB: positive integer'], reason: '' }, failure);
+  expect(onlyContract).toMatchObject({ category: 'unknown', droppedEvidence: 1 });
+  const fromTestCode = groundVerdict({ category: 'product', confidence: 'high', evidence: ['createAndVerify(name, DEFAULT_VOLUME_SIZE_GIB)'], reason: '' }, failure);
+  expect(fromTestCode).toMatchObject({ category: 'product', droppedEvidence: 0 });
+});
+
+test('safety gate turns an answer into "needs check" when the record points the other way', () => {
+  const productVerdict = { category: 'product' as const, confidence: 'high' as const, evidence: [], reason: '' };
+  const slow = applyGate({ ...failure, network: 'GET /api/v1/volumes -> completed after 11004ms' }, productVerdict, productVerdict);
+  expect(slow).toMatchObject({ category: 'unknown', conflict: 'GET /api/v1/volumes -> completed after 11004ms' });
+  const caseOnly = applyGate({
+    ...failure, network: '', errors: [{ message: 'Expected: "Active"\nReceived: "ACTIVE"', snippet: '', file: '' }],
+  }, productVerdict, productVerdict);
+  expect(caseOnly).toMatchObject({ category: 'unknown', conflict: 'Expected: "Active" / Received: "ACTIVE"' });
+});
+
+test('safety gate keeps an answer that its evidence agrees with, and falls back to the rule without AI', () => {
+  const productVerdict = { category: 'product' as const, confidence: 'high' as const, evidence: [], reason: '' };
+  expect(applyGate(failure, productVerdict, productVerdict)).toMatchObject({ category: 'product' });
+  const scriptAi = { ...productVerdict, category: 'script' as const };
+  expect(applyGate(failure, productVerdict, scriptAi)).toMatchObject({ category: 'unknown', conflict: expect.stringContaining('-> 500') });
+  expect(applyGate(failure, productVerdict, null)).toMatchObject({ category: 'product', reason: '규칙 판단과 반대되는 증거 없음' });
+  expect(applyGate(failure, { ...productVerdict, category: 'unknown' }, null)).toMatchObject({ category: 'unknown' });
 });
