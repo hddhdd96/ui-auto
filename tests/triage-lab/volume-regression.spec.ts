@@ -62,3 +62,25 @@ test('volume list API returns the created volume', {
   expect(response.status()).toBe(200);
   expect(await response.json()).toEqual([expect.objectContaining({ name })]);
 });
+
+test('created volume becomes active', {
+  tag: '@reg-06', annotation: { type: 'tc-id', description: 'REG-06' },
+}, async ({ volumePage, resources }) => {
+  const name = buildVolumeName();
+  await volumePage.openVolumes();
+  resources.register(name);
+  await volumePage.createVolume(name, DEFAULT_VOLUME_SIZE_GIB);
+  resources.markCreated(name);
+  await expect(volumePage.volumeRow(name).getByTestId('volume-status')).toHaveText('Active');
+});
+
+test('smallest volume can be created', {
+  tag: '@reg-07', annotation: { type: 'tc-id', description: 'REG-07' },
+}, async ({ volumePage, resources }) => {
+  const name = buildVolumeName();
+  const sizeGiB = 0;
+  await volumePage.openVolumes();
+  resources.register(name);
+  await volumePage.createVolume(name, sizeGiB);
+  resources.markCreated(name);
+});

@@ -14,11 +14,11 @@ import { CATEGORY_LABEL, type TriageReport } from './types';
 export function markdownSummary(report: TriageReport): string {
   const lines = ['## 실패 원인 후보 (참고용)', '', `모델: ${report.model ?? '없음 (규칙 기반만)'}`, ''];
   if (report.items.length === 0) return [...lines, '분류할 실패가 없습니다.'].join('\n');
-  lines.push('| TC | 판정 | 규칙 분류 | AI 분류 | AI가 실패 기록에서 인용한 근거 |', '|---|---|---|---|---|');
+  lines.push('| TC | 판정 | 최종 원인 후보 | 이유 | AI 분류 | 근거 |', '|---|---|---|---|---|---|');
   for (const item of report.items) {
     const ai = item.ai ? `${CATEGORY_LABEL[item.ai.category]} (${item.ai.confidence})` : (item.aiError ? '오류' : '-');
-    const evidence = item.ai?.evidence[0]?.replace(/\|/g, '\\|').slice(0, 120) ?? '';
-    lines.push(`| ${item.tcId} | ${item.result} | ${CATEGORY_LABEL[item.rule.category]} | ${ai} | ${evidence} |`);
+    const evidence = (item.final.conflict ?? item.ai?.evidence[0] ?? '').replace(/\|/g, '\\|').slice(0, 120);
+    lines.push(`| ${item.tcId} | ${item.result} | ${CATEGORY_LABEL[item.final.category]} | ${item.final.reason} | ${ai} | ${evidence} |`);
   }
   return lines.join('\n');
 }

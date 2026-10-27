@@ -13,6 +13,7 @@ const MAX_MESSAGE = 2_500;
 const MAX_SNIPPET = 1_200;
 const MAX_SNAPSHOT = 2_000;
 const MAX_NETWORK = 1_500;
+const MAX_TEST_CODE = 1_500;
 
 export function stripAnsi(text: string): string {
   return text.replace(ANSI, '');
@@ -49,6 +50,32 @@ export function networkFrom(json: string): string {
   return clip(lines.join('\n'), MAX_NETWORK);
 }
 
+/**
+ * 테스트 함수 본문을 꺼낸다. 사람이 원인을 볼 때처럼 테스트가 넣은 값과 기대한 값을 확인하기 위한 것이다.
+ * TC-ID·태그가 들어 있는 줄은 분류 힌트가 되지 않도록 뺀다.
+ */
+export function testCodeFrom(source: string, testName: string): string {
+  const lines = source.split('\n');
+  const quoted = [`'${testName}'`, `"${testName}"`, `\`${testName}\``];
+  const start = lines.findIndex(line => /^(test|setup|it)\s*\(/.test(line.trim()) && quoted.some(q => line.includes(q)));
+  if (start < 0) return '';
+  const end = lines.findIndex((line, index) => index > start && /^\}\);?\s*$/.test(line));
+  const body = lines.slice(start, end < 0 ? undefined : end + 1)
+    .filter(line => !/tc-id|\btag\s*:/.test(line));
+  return clip(body.join('\n'), MAX_TEST_CODE);
+}
+
+function readTestCode(title: string, root: string): string {
+  const segments = title.split(' > ').map(segment => segment.trim());
+  const file = segments.find(segment => /\.(spec|setup)\.ts$/.test(segment));
+  const testName = segments.at(-1) ?? '';
+  if (!file) return '';
+  for (const candidate of [path.resolve(root, file), path.resolve(root, 'auth', path.basename(file))]) {
+    if (existsSync(candidate)) return testCodeFrom(readFileSync(candidate, 'utf8'), testName);
+  }
+  return '';
+}
+
 /** Playwright는 path 첨부를 '이름-해시.확장자'로 복사하므로 파일 이름의 앞부분과 확장자로 찾는다. */
 function readAttachment(row: SummaryRow, name: string, extension: string, root: string): string | null {
   const found = row.attachments.find(item => {
@@ -82,6 +109,7 @@ export function buildTriageInputs(rows: SummaryRow[], root = process.cwd()): Tri
         })),
         pageSnapshot: context ? pageSnapshotFrom(context) : '',
         network: network ? networkFrom(network) : '',
+        testCode: readTestCode(row.title, root),
       };
     });
 }
@@ -97,5 +125,6 @@ export function inputText(input: TriageInput): string {
     ...input.errors.flatMap(error => [error.message, error.snippet]),
     input.pageSnapshot,
     input.network,
+    input.testCode,
   ].join('\n');
 }
