@@ -63,13 +63,16 @@ export function evaluationMarkdown(outcomes: LabOutcome[], model: string | null)
   }
   if (result.ai) {
     lines.push('', `AI 근거 검증: 제시 ${result.evidence.submitted}개 중 원문 불일치로 버림 ${result.evidence.dropped}개 · API 오류 ${result.aiErrors}건 · 토큰 입력 ${result.tokens.input} / 출력 ${result.tokens.output}`);
+    const errors = [...new Set(outcomes.flatMap(outcome => (outcome.item?.aiError ? [outcome.item.aiError] : [])))];
+    if (errors.length) lines.push('', 'API 오류 내용:', ...errors.slice(0, 5).map(error => `- ${error.replace(/\n/g, ' ').slice(0, 300)}`));
   }
   lines.push('', '| 케이스 | 정답 | 규칙 기반 | AI | AI 근거(첫 번째) |', '|---|---|---|---|---|');
   for (const outcome of outcomes) {
     const item = outcome.item;
     const mark = (category?: Category) => (category ? `${CATEGORY_LABEL[category]}${category === outcome.expected ? ' ✓' : ''}` : '-');
     const ai = item?.ai ? mark(item.ai.category) : (item?.aiError ? '오류' : '-');
-    const evidence = (item?.ai?.evidence[0] ?? outcome.problem ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ').slice(0, 100);
+    const raw = item?.ai?.evidence[0] ?? (item?.aiError ? `오류: ${item.aiError}` : outcome.problem ?? '');
+    const evidence = raw.replace(/\|/g, '\\|').replace(/\n/g, ' ').slice(0, 160);
     lines.push(`| ${outcome.id} ${outcome.description} | ${CATEGORY_LABEL[outcome.expected]} | ${mark(item?.rule.category)} | ${ai} | ${evidence} |`);
   }
   return lines.join('\n');

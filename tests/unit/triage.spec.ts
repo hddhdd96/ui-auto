@@ -143,3 +143,14 @@ test('without AI config only the rule baseline runs and AI errors stay visible',
   expect(withError).toMatchObject({ model: 'gemini:gemini-3.8-flash', items: [{ ai: null, aiError: expect.stringContaining('Gemini API 500') }] });
   expect(calls).toHaveLength(1);
 });
+
+test('a key or request-format error stops further AI calls instead of repeating the same failure', async () => {
+  const { impl, calls } = fakeFetch({ error: { message: 'API key not valid' } }, 400);
+  const report = await triage([failure, { ...failure, tcId: 'DEMO-VOL-002' }], 'triage-lab', { ai: gemini, fetchImpl: impl });
+  expect(calls).toHaveLength(1);
+  expect(report.items.map(item => item.aiError)).toEqual([
+    'Gemini API 400: API key not valid',
+    '건너뜀(앞선 설정 오류): Gemini API 400: API key not valid',
+  ]);
+  expect(report.items.map(item => item.rule.category)).toEqual(['product', 'product']);
+});

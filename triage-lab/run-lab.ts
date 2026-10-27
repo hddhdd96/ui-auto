@@ -64,8 +64,9 @@ async function main(): Promise<void> {
 
   const inputs = reproduced.flatMap(entry => (entry.input ? [entry.input] : []));
   const report = await triage(inputs, 'triage-lab', { ai });
+  for (const item of report.items) if (item.aiError) console.log(`[${item.tcId}] AI 오류: ${item.aiError}`);
   // 증적 보강 효과: 같은 실패를 네트워크 기록 없이 한 번 더 분류한다(AI 사용 시에만).
-  const withoutNetwork = ai
+  const withoutNetwork = ai && report.items.some(item => item.ai)
     ? await triage(inputs.map(input => ({ ...input, network: '' })), 'triage-lab', { ai })
     : null;
   let next = 0;

@@ -10,16 +10,21 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export async function triage(inputs: TriageInput[], source: string, options: TriageOptions = {}): Promise<TriageReport> {
   const ai = options.ai ?? null;
   const items: TriageItem[] = [];
+  let configError: string | null = null;
   for (const [index, input] of inputs.entries()) {
     const item: TriageItem = {
       tcId: input.tcId, testName: input.testName, result: input.result, rule: classifyByRules(input), ai: null,
     };
-    if (ai) {
+    if (ai && configError) {
+      // 키·요청 형식 문제는 다음 호출에서도 같으므로 더 호출하지 않는다(재시도도, 낭비도 하지 않음).
+      item.aiError = `건너뜀(앞선 설정 오류): ${configError}`;
+    } else if (ai) {
       if (index > 0 && ai.minIntervalMs > 0) await sleep(ai.minIntervalMs);
       try {
         item.ai = await classifyWithAi(input, ai, { fetchImpl: options.fetchImpl });
       } catch (error) {
         item.aiError = error instanceof Error ? error.message : String(error);
+        if (/ API (400|401|403|404):/.test(item.aiError)) configError = item.aiError;
       }
     }
     items.push(item);
