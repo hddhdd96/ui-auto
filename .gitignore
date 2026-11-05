@@ -1,7 +1,6 @@
 node_modules/
 .env
 .playwright/
-auth/storageState.json
 test-results/
 playwright-report/
 report/
@@ -11,4 +10,4 @@ log/
 *.zip
 .DS_Store
 __pycache__/
-triage-lab/results/
+*.pyc

@@ -1,25 +1,23 @@
 {
   "name": "ui-auto",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Sanitized Playwright UI automation portfolio for private cloud QA",
+  "description": "Public QA portfolio demo: Playwright POM, TC-ID suites, flaky self-healing, CI assertion guardrail",
   "scripts": {
-    "test": "playwright test --project=unit --project=chromium --project=demo",
-    "test:demo": "playwright test --project=chromium --project=demo",
-    "test:e2e": "playwright test --project=chromium",
-    "test:headed": "playwright test --project=chromium --headed",
+    "test": "playwright test --project=unit --project=suites",
+    "test:tc": "playwright test --project=tc",
+    "test:suites": "playwright test --project=suites",
     "test:unit": "playwright test --project=unit",
+    "test:headed": "playwright test --project=suites --headed",
     "report": "playwright show-report",
     "typecheck": "tsc --noEmit",
-    "test:external": "playwright test --project=external",
-    "triage": "tsx triage/cli.ts",
-    "triage:lab": "tsx triage-lab/run-lab.ts"
+    "guardrail": "python3 guardrail/check_test_weakening.py --base origin/main",
+    "guardrail:selftest": "python3 -m unittest discover -s guardrail -v"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.10.0",
     "dotenv": "^16.4.7",
-    "tsx": "^4.23.15",
     "typescript": "^5.8.3"
   }
 }

@@ -41,6 +41,7 @@ RULES = {
     "TW09": "허용 조건 확대",
     "TW10": "정확 일치 옵션 제거",
     "TW11": "가드레일 자체 변경",
+    "TW12": "timeout 예산 증가",
 }
 GUARD_FILES = ("guardrail/", ".github/workflows/")
 
@@ -60,6 +61,10 @@ SKIP = {
     "sh": re.compile(r"\bSKIP_\w*=(?:1|true)\b"),
 }
 RETRY_KEY = re.compile(r"retr(?:y|ies)\w*\s*[:=]|--retries\b", re.I)
+TIMEOUT_KEY = re.compile(
+    r"\b(?:timeout|actionTimeout|navigationTimeout|expect\s*:\s*\{\s*timeout)\b\s*[:=]|--timeout\b",
+    re.I,
+)
 
 STRICT = {
     "ts": re.compile(r"\.(toBe|toEqual|toStrictEqual|toHaveText|toHaveValue|toHaveCount|toHaveURL|toHaveTitle|toBeUndefined|toBeNull)\s*\("),
@@ -238,6 +243,18 @@ def retry_value(text: str) -> int | None:
     return max(numbers) if numbers else None
 
 
+def timeout_value(text: str) -> int | None:
+    """timeout: 60_000 / actionTimeout: 10_000 / { timeout: 5_000 } → 줄의 가장 큰 ms 값."""
+    match = TIMEOUT_KEY.search(text)
+    if not match:
+        return None
+    numbers = [
+        int(n.replace("_", ""))
+        for n in re.findall(r"\b\d[\d_]*\b", text[match.start():])
+    ]
+    return max(numbers) if numbers else None
+
+
 def check_file(diff: FileDiff) -> list[Finding]:
     lang = language(diff.path)
     findings: list[Finding] = []
@@ -258,15 +275,21 @@ def check_file(diff: FileDiff) -> list[Finding]:
     def add(rule: str, line: int, message: str, before: str = "", after: str = "") -> None:
         findings.append(Finding(rule, diff.path, max(line, 1), message, before.strip(), after.strip()))
 
-    # TW04 retry 증가 (설정 파일 포함)
+    # TW04 retry 증가 / TW12 timeout 증가 (설정 파일 포함)
     old_retry = [v for _, t in removed if (v := retry_value(strip_comment(t, lang))) is not None]
+    old_timeout = [v for _, t in removed if (v := timeout_value(strip_comment(t, lang))) is not None]
     for line, text in added:
-        value = retry_value(strip_comment(text, lang))
-        if value is None:
-            continue
-        baseline = max(old_retry) if old_retry else 0
-        if value > baseline:
-            add("TW04", line, f"retry가 {baseline} → {value}로 증가했습니다. 불안정한 실패를 재시도로 가리지 않습니다.", after=text)
+        code = strip_comment(text, lang)
+        retry = retry_value(code)
+        if retry is not None:
+            baseline = max(old_retry) if old_retry else 0
+            if retry > baseline:
+                add("TW04", line, f"retry가 {baseline} → {retry}로 증가했습니다. 불안정한 실패를 재시도로 가리지 않습니다.", after=text)
+        timeout = timeout_value(code)
+        if timeout is not None:
+            baseline = max(old_timeout) if old_timeout else 0
+            if timeout > baseline:
+                add("TW12", line, f"timeout이 {baseline} → {timeout}으로 증가했습니다. healing/flaky 대응으로 예산을 늘리지 않습니다.", after=text)
 
     if lang == "config":
         return findings
