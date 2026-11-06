@@ -1,11 +1,8 @@
-# 판정이 들어 있는 경로만 검사합니다. (fnmatch glob, 저장소 루트 기준)
+# 판정·정책이 들어 있는 경로만 검사합니다. (fnmatch glob, 저장소 루트 기준)
 tests/*
 pages/*
-flows/*
-services/*
+healing/*
 fixtures/*
-utils/*
-reporters/*
 auth/*
 playwright.config.ts
 package.json

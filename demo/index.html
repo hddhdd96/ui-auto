@@ -1,80 +1,263 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Volume QA Demo</title>
-<style>
-body { font: 16px system-ui; max-width: 900px; margin: 3rem auto; color: #172c3c; }
-label { display:block; margin:1rem 0; } input, button { font:inherit; padding:.5rem; }
-table { border-collapse:collapse; width:100%; } th, td { padding:1rem; border-bottom:1px solid #ddd; text-align:left; }
-dialog { border:1px solid #ccc; border-radius:8px; padding:2rem; } [role=alert] { color:#b32121; }
-</style></head>
-<body>
-<p>Local synthetic volume service · no cloud connection</p>
-<section id="login"><h1>Log in</h1><form id="login-form">
-<label>Username <input name="username" autocomplete="username" required></label>
-<label>Password <input name="password" type="password" autocomplete="current-password" required></label>
-<button>Log in</button></form></section>
-<main id="volumes" hidden>
-<p role="status" aria-label="Signed in user"></p>
-<h1>Volumes</h1><button id="open-create">Create volume</button>
-<table><thead><tr><th>Name</th><th>Status</th><th>Size</th><th>Action</th></tr></thead><tbody></tbody></table>
-</main>
-<p role="alert"></p>
-<dialog id="create-dialog" aria-labelledby="create-title"><h2 id="create-title">Create volume</h2>
-<form id="create-form"><label>Volume name <input name="name" required></label>
-<label>Size (GiB) <input name="sizeGiB" type="number" min="1" required></label>
-<button>Create</button><button type="button" id="cancel-create">Cancel</button></form></dialog>
-<dialog id="delete-dialog" aria-labelledby="delete-title"><h2 id="delete-title">Delete volume</h2>
-<p id="delete-name"></p><button id="confirm-delete">Delete</button><button id="cancel-delete">Cancel</button></dialog>
-<script type="module">
-const find = selector => document.querySelector(selector);
-const createDialog = find('#create-dialog');
-const deleteDialog = find('#delete-dialog');
-let selectedId;
-async function api(path, options) {
-  const response = await fetch(path, options);
-  if (!response.ok) throw new Error(`Request failed: ${response.status} ${await response.text()}`);
-  return response.status === 204 ? undefined : response.json();
-}
-function handle(action) { return event => { event.preventDefault(); action(event).catch(error => { find('[role=alert]').textContent = error.message; }); }; }
-async function renderVolumes() {
-  const volumes = await api('/api/v1/volumes');
-  const rows = volumes.map(volume => {
-    const row = document.createElement('tr');
-    for (const [value, testId] of [[volume.name, null], [volume.status, 'volume-status'], [`${volume.sizeGiB} GiB`, 'volume-size']]) {
-      const cell = document.createElement('td'); cell.textContent = value;
-      if (testId) cell.dataset.testid = testId;
-      row.append(cell);
+<head>
+  <meta charset="utf-8">
+  <title>Cloud Console Demo</title>
+  <style>
+    :root {
+      --bg: #0f1b24;
+      --panel: #162532;
+      --text: #e8eef3;
+      --muted: #9bb0c0;
+      --accent: #3d9bfd;
+      --danger: #e35d5d;
+      --ok: #3ecf8e;
+      --overlay: rgba(8, 14, 20, 0.72);
     }
-    const cell = document.createElement('td'); const button = document.createElement('button');
-    button.textContent = 'Delete';
-    button.onclick = () => { selectedId = volume.id; find('#delete-name').textContent = volume.name; deleteDialog.showModal(); };
-    cell.append(button); row.append(cell); return row;
-  });
-  find('tbody').replaceChildren(...rows);
-}
-find('#login-form').onsubmit = handle(async event => {
-  const form = new FormData(event.target);
-  await api('/api/login', { method:'POST', body:JSON.stringify(Object.fromEntries(form)) });
-  location.href = '/volumes';
-});
-find('#open-create').onclick = () => createDialog.showModal();
-find('#cancel-create').onclick = () => createDialog.close();
-find('#cancel-delete').onclick = () => deleteDialog.close();
-find('#create-form').onsubmit = handle(async event => {
-  const form = new FormData(event.target);
-  await api('/api/v1/volumes', { method:'POST', body:JSON.stringify({name:form.get('name'), sizeGiB:Number(form.get('sizeGiB'))}) });
-  await renderVolumes(); createDialog.close(); event.target.reset();
-});
-find('#confirm-delete').onclick = handle(async () => {
-  await api(`/api/v1/volumes/${selectedId}`, {method:'DELETE'});
-  await renderVolumes(); deleteDialog.close();
-});
-if (location.pathname !== '/login') {
-  try {
-    const user = await api('/api/me');
-    find('#login').hidden = true; find('#volumes').hidden = false;
-    find('[role=status]').textContent = user.user;
-    await renderVolumes();
-  } catch (error) { find('[role=alert]').textContent = error.message; }
-}
-</script></body></html>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.5 "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 0%, #1c3648 0%, transparent 45%),
+        radial-gradient(circle at 90% 10%, #243048 0%, transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #243746;
+      background: rgba(15, 27, 36, 0.9);
+    }
+    main { max-width: 960px; margin: 2rem auto; padding: 0 1.5rem 4rem; }
+    h1, h2 { margin: 0 0 1rem; font-weight: 650; }
+    label { display: block; margin: 0.85rem 0; color: var(--muted); }
+    input, button, select {
+      font: inherit;
+      padding: 0.55rem 0.8rem;
+      border-radius: 6px;
+      border: 1px solid #355065;
+      background: #101c26;
+      color: var(--text);
+    }
+    button {
+      cursor: pointer;
+      background: var(--accent);
+      border-color: transparent;
+      color: #041018;
+      font-weight: 650;
+    }
+    button.secondary { background: transparent; color: var(--text); border-color: #355065; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { text-align: left; padding: 0.85rem 0.5rem; border-bottom: 1px solid #243746; }
+    [role="alert"] { color: var(--danger); min-height: 1.5rem; }
+    [hidden] { display: none !important; }
+    dialog {
+      border: 1px solid #355065;
+      border-radius: 10px;
+      padding: 1.5rem;
+      background: var(--panel);
+      color: var(--text);
+      width: min(420px, 92vw);
+    }
+    dialog::backdrop { background: var(--overlay); }
+
+    /* Disruptive overlays used to demo allowlist-only healing */
+    .cloud-view-banner,
+    .product-tour-tip {
+      position: fixed;
+      z-index: 40;
+      inset: auto 1rem 1rem 1rem;
+      background: #1d3345;
+      border: 1px solid #4b6d86;
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      max-width: 420px;
+    }
+    .cloud-view-banner { left: auto; right: 1rem; top: 4.5rem; bottom: auto; }
+    .product-tour-tip { left: 1rem; right: auto; }
+    .overlay-title { font-weight: 700; margin-bottom: 0.35rem; }
+    .overlay-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
+
+    /* Off-screen create trigger to demo scroll-into-view healing */
+    #open-create-wrap {
+      margin-top: 70vh;
+      padding-bottom: 20vh;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Cloud Console Demo</strong>
+    <span role="status" aria-label="Signed in user" id="signed-in" hidden></span>
+  </header>
+
+  <main>
+    <section id="login">
+      <h1>Log in</h1>
+      <p style="color:var(--muted)">Local synthetic console · no real cloud endpoints</p>
+      <form id="login-form">
+        <label>Username <input name="username" autocomplete="username" required></label>
+        <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">Log in</button>
+      </form>
+    </section>
+
+    <section id="instances" hidden>
+      <h1>Instances</h1>
+      <p style="color:var(--muted)">Create a demo instance and verify ACTIVE status in the list.</p>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Flavor</th><th>Status</th></tr>
+        </thead>
+        <tbody id="instance-rows"></tbody>
+      </table>
+      <div id="open-create-wrap">
+        <button id="open-create" type="button">Create instance</button>
+      </div>
+    </section>
+
+    <p role="alert" id="alert"></p>
+  </main>
+
+  <dialog id="create-dialog" aria-labelledby="create-title">
+    <h2 id="create-title">Create instance</h2>
+    <form id="create-form">
+      <label>Instance name <input name="name" required data-testid="instance-name"></label>
+      <label>Flavor
+        <select name="flavor" data-testid="instance-flavor">
+          <option value="m1.tiny">m1.tiny</option>
+          <option value="m1.small">m1.small</option>
+        </select>
+      </label>
+      <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+        <button type="submit">Create</button>
+        <button type="button" class="secondary" id="cancel-create">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Allowlisted disruptive overlays (healing may dismiss these) -->
+  <aside class="cloud-view-banner" data-healing-role="cloud-view-banner" hidden>
+    <div class="overlay-title">Cloud View tip</div>
+    <div>Try the new list layout. This banner can block clicks until dismissed.</div>
+    <div class="overlay-actions">
+      <button type="button" data-dismiss="cloud-view">Got it</button>
+    </div>
+  </aside>
+  <aside class="product-tour-tip" data-healing-role="product-tour" hidden>
+    <div class="overlay-title">Product tour</div>
+    <div>Create your first instance from the button below.</div>
+    <div class="overlay-actions">
+      <button type="button" data-dismiss="tour">Dismiss tour</button>
+    </div>
+  </aside>
+
+  <script type="module">
+    const find = (selector) => document.querySelector(selector);
+    const createDialog = find('#create-dialog');
+    const params = new URLSearchParams(location.search);
+    const showOverlays = params.get('overlays') === '1';
+
+    async function api(path, options) {
+      const response = await fetch(path, {
+        headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
+        ...options,
+      });
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status} ${await response.text()}`);
+      }
+      return response.status === 204 ? undefined : response.json();
+    }
+
+    function handle(action) {
+      return (event) => {
+        event.preventDefault();
+        action(event).catch((error) => {
+          find('#alert').textContent = error.message;
+        });
+      };
+    }
+
+    async function renderInstances() {
+      const instances = await api('/api/v1/instances');
+      const rows = instances.map((instance) => {
+        const row = document.createElement('tr');
+        row.dataset.testid = 'instance-row';
+        row.dataset.name = instance.name;
+        for (const [value, testId] of [
+          [instance.name, 'instance-name-cell'],
+          [instance.flavor, 'instance-flavor'],
+          [instance.status, 'instance-status'],
+        ]) {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          if (testId) cell.dataset.testid = testId;
+          row.append(cell);
+        }
+        return row;
+      });
+      find('#instance-rows').replaceChildren(...rows);
+    }
+
+    function showDisruptiveOverlays() {
+      if (!showOverlays) return;
+      find('.cloud-view-banner').hidden = false;
+      find('.product-tour-tip').hidden = false;
+    }
+
+    find('#login-form').onsubmit = handle(async (event) => {
+      const form = new FormData(event.target);
+      await api('/api/login', {
+        method: 'POST',
+        body: JSON.stringify(Object.fromEntries(form)),
+      });
+      const next = showOverlays ? '/instances?overlays=1' : '/instances';
+      location.href = next;
+    });
+
+    find('#open-create').onclick = () => createDialog.showModal();
+    find('#cancel-create').onclick = () => createDialog.close();
+    find('#create-form').onsubmit = handle(async (event) => {
+      const form = new FormData(event.target);
+      await api('/api/v1/instances', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: form.get('name'),
+          flavor: form.get('flavor'),
+        }),
+      });
+      await renderInstances();
+      createDialog.close();
+      event.target.reset();
+    });
+
+    document.querySelectorAll('[data-dismiss]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const role = button.getAttribute('data-dismiss');
+        if (role === 'cloud-view') find('.cloud-view-banner').hidden = true;
+        if (role === 'tour') find('.product-tour-tip').hidden = true;
+      });
+    });
+
+    if (location.pathname !== '/login') {
+      try {
+        const user = await api('/api/me');
+        find('#login').hidden = true;
+        find('#instances').hidden = false;
+        find('#signed-in').hidden = false;
+        find('#signed-in').textContent = user.user;
+        await renderInstances();
+        showDisruptiveOverlays();
+      } catch (error) {
+        find('#alert').textContent = error.message;
+      }
+    }
+  </script>
+</body>
+</html>
