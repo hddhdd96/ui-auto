@@ -1,0 +1,438 @@
+{
+  "area": "볼륨·볼륨 그룹",
+  "description": "볼륨 크기 경계값, 연결·삭제 상태 규칙, 볼륨 그룹 구성 규칙",
+  "riskReason": "볼륨·볼륨 그룹은 연결·그룹 소속 같은 상태가 얽혀 있어, 삭제 요청의 응답과 실제 결과가 어긋나기 쉬운 영역이다.",
+  "cases": [
+    {
+      "id": "NEG-VOL-001",
+      "title": "크기를 빠뜨리면 400 REQUIRED",
+      "category": "required",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "REQUIRED",
+        "field": "sizeGb"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-002",
+      "title": "크기가 0 GB(최소 1 GB 미만)면 400 OUT_OF_RANGE",
+      "category": "boundary",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": 0
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "OUT_OF_RANGE",
+        "field": "sizeGb"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-003",
+      "title": "크기가 정확히 1 GB(최소 경계)면 생성된다",
+      "category": "boundary",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": 1
+        }
+      },
+      "expect": {
+        "status": 202
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-004",
+      "title": "크기가 정확히 1000 GB(최대 경계)면 생성된다",
+      "category": "boundary",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": 1000
+        }
+      },
+      "expect": {
+        "status": 202
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 1
+        }
+      ],
+      "setup": [
+        {
+          "type": "quota",
+          "values": {
+            "volumeGb": 1000
+          }
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-005",
+      "title": "크기가 1001 GB(최대 1000 GB 초과)면 400 OUT_OF_RANGE",
+      "category": "boundary",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": 1001
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "OUT_OF_RANGE",
+        "field": "sizeGb"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-006",
+      "title": "크기가 소수면 400 INVALID_FORMAT",
+      "category": "format",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": 10.5
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_FORMAT",
+        "field": "sizeGb"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-007",
+      "title": "크기가 문자열이면 400 INVALID_FORMAT",
+      "category": "format",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": "10"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_FORMAT",
+        "field": "sizeGb"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-008",
+      "title": "볼륨 용량 쿼터를 넘으면 409 QUOTA_EXCEEDED",
+      "category": "quota",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "quota",
+          "values": {
+            "volumeGb": 50
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": 51
+        }
+      },
+      "expect": {
+        "status": 409,
+        "code": "QUOTA_EXCEEDED"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-009",
+      "title": "없는 인스턴스에 연결하면 400 INVALID_REFERENCE이고 볼륨은 AVAILABLE 그대로다",
+      "category": "reference",
+      "risk": "normal",
+      "setup": [
+        {
+          "type": "volume",
+          "as": "vol"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/volumes/{{vol.id}}/attach",
+        "body": {
+          "instanceId": "inst-9999"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_REFERENCE",
+        "field": "instanceId"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "id": "{{vol.id}}",
+          "fields": {
+            "status": "AVAILABLE",
+            "attachedInstanceId": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-010",
+      "title": "이미 연결된(IN_USE) 볼륨을 다시 연결하면 409 INVALID_STATE",
+      "category": "state",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "instance",
+          "as": "inst"
+        },
+        {
+          "type": "volume",
+          "as": "vol"
+        },
+        {
+          "type": "attach",
+          "volume": "vol",
+          "instance": "inst"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/volumes/{{vol.id}}/attach",
+        "body": {
+          "instanceId": "{{inst.id}}"
+        }
+      },
+      "expect": {
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "id": "{{vol.id}}",
+          "fields": {
+            "status": "IN_USE",
+            "attachedInstanceId": "{{inst.id}}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NEG-VOL-011",
+      "title": "연결된(IN_USE) 볼륨을 삭제하면 400 RESOURCE_IN_USE이고 볼륨은 그대로 남는다",
+      "category": "state",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "instance",
+          "as": "inst"
+        },
+        {
+          "type": "volume",
+          "as": "vol"
+        },
+        {
+          "type": "attach",
+          "volume": "vol",
+          "instance": "inst"
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "path": "/volumes/{{vol.id}}"
+      },
+      "expect": {
+        "status": 400,
+        "code": "RESOURCE_IN_USE"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "id": "{{vol.id}}",
+          "fields": {
+            "status": "IN_USE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NEG-VG-001",
+      "title": "볼륨 없이 볼륨 그룹을 만들면 400 REQUIRED",
+      "category": "required",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volume-groups",
+        "body": {
+          "name": "{{unique}}",
+          "volumeIds": []
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "REQUIRED",
+        "field": "volumeIds"
+      },
+      "verify": [
+        {
+          "kind": "volume-groups",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-VG-002",
+      "title": "없는 볼륨으로 볼륨 그룹을 만들면 404 NOT_FOUND",
+      "category": "reference",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/volume-groups",
+        "body": {
+          "name": "{{unique}}",
+          "volumeIds": [
+            "vol-9999"
+          ]
+        }
+      },
+      "expect": {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      "verify": [
+        {
+          "kind": "volume-groups",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-VG-003",
+      "title": "볼륨 그룹 수 쿼터를 넘으면 409 QUOTA_EXCEEDED이고 볼륨은 그룹에 묶이지 않는다",
+      "category": "quota",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "volume",
+          "as": "vol"
+        },
+        {
+          "type": "quota",
+          "values": {
+            "volumeGroups": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/volume-groups",
+        "body": {
+          "name": "{{unique}}",
+          "volumeIds": [
+            "{{vol.id}}"
+          ]
+        }
+      },
+      "expect": {
+        "status": 409,
+        "code": "QUOTA_EXCEEDED"
+      },
+      "verify": [
+        {
+          "kind": "volume-groups",
+          "name": "{{unique}}",
+          "count": 0
+        },
+        {
+          "kind": "volumes",
+          "id": "{{vol.id}}",
+          "fields": {
+            "groupId": null
+          }
+        }
+      ]
+    }
+  ]
+}

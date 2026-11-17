@@ -14,7 +14,9 @@
     "test": "playwright test",
     "test:api": "playwright test --project=api",
     "report": "playwright show-report",
-    "test:ui": "playwright test --project=ui"
+    "test:ui": "playwright test --project=ui",
+    "test:negative": "playwright test --project=negative",
+    "test:negative:high": "playwright test --project=negative --grep @risk-high"
   },
   "dependencies": {
     "express": "^5.1.0"

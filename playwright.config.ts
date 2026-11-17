@@ -27,6 +27,7 @@ export default defineConfig({
   projects: [
     { name: 'api', testDir: './tests/api' },
     { name: 'ui', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },
+    { name: 'negative', testDir: './tests/negative', use: { ...devices['Desktop Chrome'] } },
   ],
   // BASE_URL을 직접 주면 이미 떠 있는 포털을 대상으로 하고, 아니면 로컬 포털을 띄운다.
   webServer: process.env.BASE_URL ? undefined : {

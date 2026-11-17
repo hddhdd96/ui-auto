@@ -4,7 +4,8 @@ import { config } from '../config.ts';
 import { db, FLAVORS, resetStore } from '../store.ts';
 import type { Quota } from '../types.ts';
 import { quotaOf, usageOf } from '../usage.ts';
-import { requireInt } from '../validation.ts';
+import { notFound } from '../errors.ts';
+import { requireInt, requireString } from '../validation.ts';
 import { bodyOf } from './helpers.ts';
 
 export const environmentRouter = Router();
@@ -51,6 +52,14 @@ environmentRouter.get('/usage', requireAuth, (req, res) => {
 /** 테스트용: 모든 리소스와 쿼터를 초기 상태로 되돌린다. 로그인 세션은 유지한다. */
 environmentRouter.post('/test/reset', (_req, res) => {
   resetStore();
+  res.json({ ok: true });
+});
+
+/** 테스트용: 지정한 토큰을 즉시 만료시킨다. 실행 중 세션이 만료되는 상황을 기다리지 않고 재현한다. */
+environmentRouter.post('/test/expire-session', (req, res) => {
+  const session = db.sessions.get(requireString(bodyOf(req).token, 'token'));
+  if (!session) throw notFound('세션');
+  session.expiresAt = Date.now() - 1;
   res.json({ ok: true });
 });
 

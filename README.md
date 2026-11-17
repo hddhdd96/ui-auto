@@ -13,7 +13,7 @@
 - [x] 2단계: 웹 콘솔 화면
 - [x] 3단계: REST API 자동화(상태 폴링, 남은 리소스 일괄 삭제)
 - [x] 4단계: Playwright UI E2E(Page Object Model)
-- [ ] 5단계: 네거티브 dataset 테스트
+- [x] 5단계: 네거티브 dataset 테스트
 - [ ] 6단계: 결함 주입과 결함 재현 테스트
 - [ ] 7단계: Flaky 재현과 안정화(naive / stable 비교)
 - [ ] 8단계: 실패 증적 수집과 실패 원인 자동 분류
@@ -42,6 +42,8 @@ npm run report
 | `npm test` | 포털을 자동으로 띄운 뒤 전체 테스트를 실행한다 |
 | `npm run test:api` | REST API 테스트만 실행한다 |
 | `npm run test:ui` | UI E2E 테스트만 실행한다 |
+| `npm run test:negative` | 네거티브 dataset 테스트만 실행한다 |
+| `npm run test:negative:high` | 네거티브 dataset 중 결함이 자주 나는 영역(`risk: high`)만 실행한다 |
 | `npm run report` | Playwright HTML 리포트를 연다 |
 
 `npm run portal`을 실행하면 `http://127.0.0.1:4173`에서 웹 콘솔이, `http://127.0.0.1:4173/api`에서 REST API가 뜹니다.
@@ -231,3 +233,47 @@ API 테스트만으로는 화면에서만 드러나는 결함(화면 표시가 �
 | UI-QUOTA-001 | 쿼터를 넘는 인스턴스 생성은 화면에서 막고, API 목록에도 인스턴스가 생기지 않는다 |
 | UI-QUOTA-002 | 관리자가 대시보드에서 쿼터를 바꾸면 표와 API에 반영된다 |
 | UI-ROLE-001 | 일반 사용자에게는 쿼터 변경과 네트워크 생성·삭제 기능이 보이지 않고, 자신의 프로젝트만 고를 수 있다 |
+
+## 네거티브 dataset 테스트
+
+입력 규칙을 어긴 요청을 시스템이 제대로 거부하는지 확인하는 테스트입니다. 케이스를 코드가 아니라 JSON dataset으로 관리하고, 정상 흐름 테스트(`tests/api`, `tests/ui`)와 분리해 버전마다 같은 dataset을 반복 실행할 수 있게 했습니다.
+
+### 구성
+
+| 파일 | 내용 | 케이스 수 |
+|---|---|---|
+| `tests/negative/datasets/api-instance.json` | 인스턴스 이름 경계값·형식, 사양·네트워크 참조, 쿼터, 진행 중 상태의 작업 | 20 |
+| `tests/negative/datasets/api-volume.json` | 볼륨 크기 경계값·형식, 용량 쿼터, 연결·삭제 상태, 볼륨 그룹 구성 | 14 |
+| `tests/negative/datasets/api-network.json` | IP 대역 형식·prefix 범위·호스트 비트, 서브넷 범위·중복, 보안 그룹 규칙 | 12 |
+| `tests/negative/datasets/api-auth.json` | 토큰 없음·무효·만료, 관리자 전용 기능, 다른 프로젝트 접근 | 10 |
+| `tests/negative/datasets/ui-volume-form.json` | 볼륨 생성 화면의 이름·크기 입력과 쿼터 차단 | 9 |
+
+케이스 하나는 아래 정보를 가집니다.
+
+- `category`: 경계값(`boundary`), 필수값 누락(`required`), 형식(`format`), 참조(`reference`), 중복(`duplicate`), 쿼터 초과(`quota`), 상태(`state`), 권한 없음(`permission`), 인증(`auth`)
+- `risk`: 결함이 자주 나는 영역이면 `high`입니다. 쿼터 초과, 진행 중 상태의 작업, 권한, 서브넷 대역처럼 화면에서는 막히지만 API로 직접 요청하면 뚫리기 쉬운 영역을 `high`로 골랐고, 고른 이유는 dataset 파일의 `riskReason`에 적었습니다. API dataset 56건 중 20건, 화면 dataset 9건 중 1건이 `high`입니다.
+- `setup`: 사전 준비(인스턴스·볼륨·네트워크 생성, 볼륨 연결, 쿼터 임시 변경). 쿼터를 바꾼 케이스는 끝나면 원래 쿼터로 되돌립니다.
+- `request`, `expect`: 보낼 요청과 기대하는 응답 코드·오류 코드·오류 필드
+- `verify`: 응답을 받은 뒤 목록 API로 확인할 실제 상태
+
+경계값은 실패하는 값만이 아니라 통과해야 하는 값(이름 3자·30자, 볼륨 1 GB·1000 GB)도 함께 넣어, 경계가 한쪽으로 밀린 결함도 잡을 수 있게 했습니다.
+
+### 판정 절차
+
+실행기(`tests/negative/api-negative.spec.ts`)는 케이스마다 같은 절차로 판정합니다.
+
+1. 응답 코드, 오류 코드, 오류 필드가 기대와 같은지 확인합니다.
+2. 응답만 믿지 않고 목록 API로 실제 상태를 확인합니다. 생성 요청이면 리소스가 생기지 않았는지, 변경·삭제 요청이면 대상이 그대로 남아 있는지 봅니다.
+3. 거부된 요청이면 프로젝트 사용량과 쿼터가 요청 전과 같은지 확인합니다. 응답은 거부였는데 실제로는 리소스가 만들어져 사용량이 바뀌는 결함을 잡기 위해서입니다.
+
+화면 dataset 실행기(`tests/negative/ui-negative.spec.ts`)는 화면에 기대한 오류 메시지가 표시되는지, 그리고 목록 API에 볼륨이 생기지 않았는지를 함께 확인합니다.
+
+### 실행
+
+```bash
+npm run test:negative        # 전체 65건
+npm run test:negative:high   # risk: high 21건만
+npx playwright test --project=negative --grep @quota   # 분류별 실행(예: 쿼터)
+```
+
+케이스를 추가할 때는 dataset JSON에 항목만 추가하면 됩니다. 실행기가 테스트를 만들기 전에 dataset 형식(ID 형식과 중복, 필수 항목)을 검사하므로, 형식이 틀리면 바로 실패합니다.

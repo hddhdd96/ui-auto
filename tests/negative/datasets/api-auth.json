@@ -1,0 +1,218 @@
+{
+  "area": "인증·권한",
+  "description": "토큰 없음·무효·만료, 관리자 전용 기능, 다른 프로젝트 접근",
+  "riskReason": "권한 검사는 화면에서 버튼을 숨기는 것만으로 끝나기 쉬워, API로 직접 요청했을 때 뚫리는지 반드시 확인해야 하는 영역이다.",
+  "cases": [
+    {
+      "id": "NEG-AUTH-001",
+      "title": "비밀번호가 틀리면 401 INVALID_CREDENTIALS",
+      "category": "auth",
+      "risk": "normal",
+      "request": {
+        "as": "anonymous",
+        "method": "POST",
+        "path": "/auth/login",
+        "body": {
+          "username": "admin",
+          "password": "wrong-password"
+        }
+      },
+      "expect": {
+        "status": 401,
+        "code": "INVALID_CREDENTIALS"
+      }
+    },
+    {
+      "id": "NEG-AUTH-002",
+      "title": "아이디를 빠뜨리면 400 REQUIRED",
+      "category": "required",
+      "risk": "normal",
+      "request": {
+        "as": "anonymous",
+        "method": "POST",
+        "path": "/auth/login",
+        "body": {
+          "password": "admin-pass"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "REQUIRED",
+        "field": "username"
+      }
+    },
+    {
+      "id": "NEG-AUTH-003",
+      "title": "토큰 없이 리소스를 만들면 401 UNAUTHENTICATED이고 리소스가 생기지 않는다",
+      "category": "auth",
+      "risk": "high",
+      "request": {
+        "as": "anonymous",
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": 10
+        }
+      },
+      "expect": {
+        "status": 401,
+        "code": "UNAUTHENTICATED"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-AUTH-004",
+      "title": "무효한 토큰으로 요청하면 401 INVALID_TOKEN",
+      "category": "auth",
+      "risk": "normal",
+      "request": {
+        "as": "invalidToken",
+        "method": "GET",
+        "path": "/instances"
+      },
+      "expect": {
+        "status": 401,
+        "code": "INVALID_TOKEN"
+      }
+    },
+    {
+      "id": "NEG-AUTH-005",
+      "title": "만료된 토큰으로 리소스를 만들면 401 TOKEN_EXPIRED이고 리소스가 생기지 않는다",
+      "category": "auth",
+      "risk": "high",
+      "request": {
+        "as": "expiredToken",
+        "method": "POST",
+        "path": "/volumes",
+        "body": {
+          "name": "{{unique}}",
+          "sizeGb": 10
+        }
+      },
+      "expect": {
+        "status": 401,
+        "code": "TOKEN_EXPIRED"
+      },
+      "verify": [
+        {
+          "kind": "volumes",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-PERM-001",
+      "title": "일반 사용자가 쿼터를 바꾸면 403 FORBIDDEN이고 쿼터는 그대로다",
+      "category": "permission",
+      "risk": "high",
+      "request": {
+        "as": "member",
+        "method": "PUT",
+        "path": "/quota",
+        "body": {
+          "instances": 99
+        }
+      },
+      "expect": {
+        "status": 403,
+        "code": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "NEG-PERM-002",
+      "title": "일반 사용자가 네트워크를 만들면 403 FORBIDDEN이고 네트워크가 생기지 않는다",
+      "category": "permission",
+      "risk": "high",
+      "request": {
+        "as": "member",
+        "method": "POST",
+        "path": "/networks",
+        "body": {
+          "name": "{{unique}}",
+          "cidr": "10.80.0.0/16"
+        }
+      },
+      "expect": {
+        "status": 403,
+        "code": "FORBIDDEN"
+      },
+      "verify": [
+        {
+          "kind": "networks",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-PERM-003",
+      "title": "일반 사용자가 기본 네트워크를 삭제하면 403 FORBIDDEN이고 네트워크는 그대로다",
+      "category": "permission",
+      "risk": "high",
+      "request": {
+        "as": "member",
+        "method": "DELETE",
+        "path": "/networks/net-default-proj-alpha"
+      },
+      "expect": {
+        "status": 403,
+        "code": "FORBIDDEN"
+      },
+      "verify": [
+        {
+          "kind": "networks",
+          "id": "net-default-proj-alpha",
+          "fields": {
+            "cidr": "10.0.0.0/16"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NEG-PERM-004",
+      "title": "일반 사용자가 속하지 않은 프로젝트를 조회하면 403 FORBIDDEN",
+      "category": "permission",
+      "risk": "high",
+      "request": {
+        "as": "member",
+        "method": "GET",
+        "path": "/instances",
+        "projectId": "proj-beta"
+      },
+      "expect": {
+        "status": 403,
+        "code": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "NEG-PERM-005",
+      "title": "다른 프로젝트의 리소스 ID로 삭제하면 404 NOT_FOUND이고 리소스는 그대로다",
+      "category": "permission",
+      "risk": "high",
+      "request": {
+        "as": "admin",
+        "method": "DELETE",
+        "path": "/security-groups/sg-default-proj-beta"
+      },
+      "expect": {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      "verify": [
+        {
+          "kind": "security-groups",
+          "id": "sg-default-proj-beta",
+          "projectId": "proj-beta"
+        }
+      ]
+    }
+  ]
+}
