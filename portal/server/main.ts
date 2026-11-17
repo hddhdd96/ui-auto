@@ -1,12 +1,6 @@
-import express from 'express';
+import { createApp } from './app.ts';
+import { config } from './config.ts';
 
-const port = Number(process.env.PORTAL_PORT ?? 4173);
-const app = express();
-
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.listen(port, '127.0.0.1', () => {
-  console.log(`Mock 클라우드 포털 실행 중: http://127.0.0.1:${port}`);
+createApp().listen(config.port, '127.0.0.1', () => {
+  console.log(`Mock 클라우드 포털 실행 중: http://127.0.0.1:${config.port}`);
 });
