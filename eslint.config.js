@@ -7,6 +7,8 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     rules: {
+      // Playwright fixture는 쓰지 않는 인자도 빈 객체 패턴({})으로 받아야 한다.
+      'no-empty-pattern': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },

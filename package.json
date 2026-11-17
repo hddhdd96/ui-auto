@@ -4,12 +4,16 @@
   "private": true,
   "description": "Mock 클라우드 포털(웹 콘솔 + REST API)과 Playwright UI/API 테스트 자동화, 테스트 하네스, CI 가드레일을 담은 QA 포트폴리오",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "portal": "tsx portal/server/main.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "report": "playwright show-report"
   },
   "dependencies": {
     "express": "^5.1.0"
