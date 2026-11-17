@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { ApiError } from './errors.ts';
@@ -16,6 +17,9 @@ export function createApp() {
   api.use(authRouter, environmentRouter, instanceRouter, volumeRouter, networkRouter);
   api.use((_req, _res, next) => { next(new ApiError(404, 'NOT_FOUND', '존재하지 않는 API입니다.')); });
   app.use('/api', api);
+
+  // 웹 콘솔(빌드 없는 정적 파일)
+  app.use(express.static(path.join(import.meta.dirname, '..', 'web')));
 
   // 모든 오류를 { error: { code, message, field? } } 형식으로 돌려준다.
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

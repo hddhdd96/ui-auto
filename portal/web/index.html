@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mock 클라우드 포털</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- 로그인 화면 -->
+  <section id="login-view" class="login" hidden>
+    <h1>Mock 클라우드 포털</h1>
+    <p class="hint">테스트 자동화 시연용 가상 포털입니다.</p>
+    <p id="login-error" role="alert" class="alert error" hidden></p>
+    <form id="login-form">
+      <label for="login-username">아이디</label>
+      <input id="login-username" name="username" autocomplete="username" required>
+      <label for="login-password">비밀번호</label>
+      <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+      <button type="submit">로그인</button>
+    </form>
+  </section>
+
+  <!-- 콘솔 화면 -->
+  <div id="console-view" hidden>
+    <header class="topbar">
+      <strong class="brand">Mock 클라우드 포털</strong>
+      <label for="project-select">프로젝트</label>
+      <select id="project-select"></select>
+      <span class="spacer"></span>
+      <span id="user-name" aria-label="로그인 사용자"></span>
+      <span id="session-expiry" aria-label="세션 만료 시각"></span>
+      <button type="button" id="extend-button">세션 연장</button>
+      <button type="button" id="logout-button">로그아웃</button>
+    </header>
+    <div class="layout">
+      <nav aria-label="주 메뉴">
+        <a href="#/dashboard">대시보드</a>
+        <a href="#/instances">인스턴스</a>
+        <a href="#/volumes">볼륨</a>
+        <a href="#/volume-groups">볼륨 그룹</a>
+        <a href="#/networks">네트워크</a>
+        <a href="#/security-groups">보안 그룹</a>
+      </nav>
+      <main>
+        <p id="message" role="status" class="alert success" hidden></p>
+        <p id="error" role="alert" class="alert error" hidden></p>
+        <div id="view"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 공용 대화상자: 삭제 확인, 사양 변경, 볼륨 연결, 서브넷 추가에 쓴다 -->
+  <dialog id="dialog" aria-labelledby="dialog-title">
+    <form method="dialog" id="dialog-form">
+      <h2 id="dialog-title"></h2>
+      <div id="dialog-body"></div>
+      <p id="dialog-error" role="alert" class="alert error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" id="dialog-cancel">취소</button>
+        <button type="submit" id="dialog-ok">확인</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
