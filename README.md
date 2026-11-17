@@ -1,99 +1,36 @@
-# UI Auto — QA Portfolio Demo
+# Mock 클라우드 포털 QA 자동화 포트폴리오
 
-[![CI](https://github.com/hddhdd96/ui-auto/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hddhdd96/ui-auto/actions/workflows/ci.yml)
+작은 **Mock 클라우드 포털**(웹 콘솔 + REST API)을 직접 만들고, 그 위에 Playwright 기반 UI/API 테스트 자동화, 테스트 하네스(실행 → 증적 수집 → 결과서 자동 작성), GitHub Actions CI를 적용하는 저장소입니다.
 
-Playwright + TypeScript 공개 포트폴리오 데모입니다.  
-**Page Object Model · TC-ID 단위 테스트 · 시나리오 스위트 · flaky self-healing · assertion/retry/timeout 가드레일**을 최소 목 UI로 보여 줍니다.
+> 이 저장소의 포털, 리소스, TC ID, 계정은 모두 가상입니다. 실제 회사·제품 정보는 들어 있지 않습니다.
 
-회사 콘솔·비밀값·실제 OpenStack/K8s 엔드포인트는 포함하지 않습니다. 로컬 mock console만 사용합니다.
+## 진행 상태
 
-## 바로 실행
+단계별로 개발하고 있습니다. 완료한 단계만 체크합니다.
 
-Node.js 20+ / npm 필요.
+- [x] 0단계: 프로젝트 뼈대(TypeScript, ESLint, AI 작업 지침)
+- [ ] 1단계: Mock 포털 REST API
+- [ ] 2단계: 웹 콘솔 화면
+- [ ] 3단계: REST API 자동화(상태 폴링, 남은 리소스 일괄 삭제)
+- [ ] 4단계: Playwright UI E2E(Page Object Model)
+- [ ] 5단계: 네거티브 dataset 테스트
+- [ ] 6단계: 결함 주입과 결함 재현 테스트
+- [ ] 7단계: Flaky 재현과 안정화(naive / stable 비교)
+- [ ] 8단계: 실패 증적 수집과 실패 원인 자동 분류
+- [ ] 9단계: 테스트 하네스와 Excel·PPT 결과서
+- [ ] 10단계: CI 가드레일(판정 완화 변경 차단)
+- [ ] 11단계: GitHub Actions 워크플로
+- [ ] 12단계: 시연 시나리오와 이력서 대응표 정리
+
+## 지금 실행할 수 있는 것
+
+Node.js 20 이상이 필요합니다.
 
 ```bash
 npm ci
-npx playwright install chromium
+npm run lint
 npm run typecheck
-npm test
-npm run report
+npm run portal
 ```
 
-| 명령 | 범위 |
-|---|---|
-| `npm test` | unit(self-heal) + suites(Instance Create) |
-| `npm run test:tc` | TC-ID 파일 단독 실행 (`tests/tc/`) |
-| `npm run test:suites` | 시나리오 스위트만 |
-| `npm run guardrail:selftest` | 가드레일 단위 테스트 |
-| `npm run guardrail` | `origin/main...HEAD` diff 판정 약화 검사 |
-
-기본 주소: `http://127.0.0.1:4173` (Playwright `webServer`가 `demo/server.mjs` 기동).
-
-## 구조
-
-```text
-tests/tc/TC-*.spec.ts     → TC-ID당 1 파일 (시나리오 + assertion)
-tests/suites/*.spec.ts    → 서비스/시나리오별 TC-ID 묶음
-tests/steps/              → 공유 스텝 (페이지 액션 조합)
-pages/                    → POM (locator + actions)
-healing/                  → scroll / locator fallback / overlay allowlist
-guardrail/                → assertion·retry·timeout 불변 CI 검사
-demo/                     → 로컬 mock console (로그인 + 인스턴스 생성)
-docs/screenshots/         → OCR·엑셀 리포트 포트폴리오 증적(실행 제외)
-```
-
-### POM / TC-ID / Suite
-
-- **POM** (`pages/`): locator와 클릭·입력 같은 액션만 둔다. 기대값 assertion은 테스트에 둔다.
-- **TC-ID** (`tests/tc/`): 파일·테스트 제목에 `TC-AUTH-001`, `TC-INST-002`처럼 ID를 붙인다.
-- **Suite** (`tests/suites/instance-create.spec.ts`): `TC-AUTH-001` ~ `TC-INST-003`을 Instance Create 시나리오로 묶는다.
-
-## Self-healing vs 불변 assert 정책
-
-Self-healing이 **해도 되는 것**
-
-1. **scroll into view** — 화면 밖 CTA를 뷰포트로 이동
-2. **locator fallback** — 동일 의미의 후보 locator 체인
-3. **Cloud View allowlist overlay dismiss** — 방해성 배너/투어만 (`healing/overlayAllowlist.ts`)
-
-Self-healing이 **하면 안 되는 것**
-
-- assertion 완화 (`toHaveText` → `toContainText`, exact 제거 등)
-- `retries` 증가
-- `timeout` / `expect.timeout` / action timeout 예산 증가
-- `test.skip` / soft expect로 실패 은닉
-
-호출부는 고정 예산(`ACTION_TIMEOUT_MS = 5000`, config `retries: 0`)을 넘긴다. healing 모듈은 그 숫자를 키우지 않는다.
-
-## CI Guardrail
-
-`guardrail/check_test_weakening.py` + `.github/workflows/guardrail.yml`
-
-PR diff에서 판정 약화 의심 변경을 약 12개 규칙으로 차단합니다.
-
-| 규칙 | 요지 |
-|---|---|
-| TW01–TW02 | assertion / 테스트 케이스 순감소 |
-| TW03 | skip / only / fixme / expected-failure |
-| TW04 | retry 증가 |
-| TW05–TW06 | 완전일치→부분일치, 기대값 변경 |
-| TW07–TW10 | 실패 삼키기, 항상 참, 허용 확대, exact 제거 |
-| TW11 | 가드레일 자체 변경 |
-| TW12 | timeout 예산 증가 |
-
-의도된 정책 변경이면 PR에 근거를 적고 `test-change-approved` 라벨을 붙입니다. 라벨이 있으면 경고만 내고 통과합니다.
-
-## 포트폴리오 증적 (실행하지 않음)
-
-다음 항목은 이력서용 스크린샷으로만 제시합니다. 이 저장소의 `npm test`에는 포함하지 않습니다.
-
-- OCR(Tesseract) UI 텍스트 검증 파이프라인
-- Excel 증적/결과 리포트 생성기
-
-자리 표시: [`docs/screenshots/`](docs/screenshots/README.md)
-
-## 보안 / 범위
-
-- 원격은 `hddhdd96/ui-auto`만 사용합니다.
-- 실서비스 호스트명, 토큰, 고객명, 사내 URL을 넣지 마세요.
-- mock 계정: `demo-user` / `demo-password` (로컬 전용).
+`npm run portal`을 실행하면 `http://127.0.0.1:4173/api/health`에서 포털 상태를 확인할 수 있습니다.

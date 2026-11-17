@@ -1,6 +1,0 @@
-diff --git a/tests/steps/instance-create.ts b/tests/steps/instance-create.ts
---- a/tests/steps/instance-create.ts
-+++ b/tests/steps/instance-create.ts
-@@ -39 +39 @@
--  await expect(row.getByTestId('instance-status')).toHaveText(/^ACTIVE$/);
-+  await expect(row.getByTestId('instance-status')).toContainText('ACTIVE');
