@@ -169,7 +169,8 @@ function createTable(caption, columns) {
 
 /** 생성 폼 패널. 제출 중 오류는 화면 위쪽 알림 영역에 보여준다. */
 function createForm(title, fields, submitLabel, onSubmit) {
-  const form = h('form', { class: 'form-row', 'aria-label': title }, fields, h('button', { type: 'submit' }, submitLabel));
+  // 브라우저 기본 검증 말풍선 대신 포털의 오류 메시지로 통일하기 위해 novalidate를 붙인다.
+  const form = h('form', { class: 'form-row', 'aria-label': title, novalidate: true }, fields, h('button', { type: 'submit' }, submitLabel));
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearAlerts();
