@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 const port = process.env.PORTAL_PORT ?? '4173';
 const baseURL = process.env.BASE_URL ?? `http://127.0.0.1:${port}`;
@@ -26,6 +26,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'api', testDir: './tests/api' },
+    { name: 'ui', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },
   ],
   // BASE_URL을 직접 주면 이미 떠 있는 포털을 대상으로 하고, 아니면 로컬 포털을 띄운다.
   webServer: process.env.BASE_URL ? undefined : {

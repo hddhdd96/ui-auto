@@ -205,7 +205,7 @@ async function dashboardView(view) {
 
   if (isAdmin()) {
     const inputs = Object.fromEntries(Object.entries(USAGE_LABELS).map(([key, label]) =>
-      [key, h('input', { type: 'number', min: 0, style: 'width: 110px', 'data-key': key, 'aria-label': `${label} 쿼터` })]));
+      [key, h('input', { type: 'number', min: 0, style: 'width: 110px', 'data-key': key })]));
     view.append(createForm('쿼터 변경', Object.entries(USAGE_LABELS).map(([key, label]) => field(label, inputs[key])), '쿼터 저장',
       async () => {
         const body = {};
