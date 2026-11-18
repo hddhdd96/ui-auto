@@ -19,7 +19,7 @@
 - [x] 8단계: 실패 증적 수집과 실패 원인 자동 분류
 - [x] 9단계: 테스트 하네스와 Excel·PPT 결과서
 - [x] 10단계: CI 가드레일(판정 완화 변경 차단)
-- [ ] 11단계: GitHub Actions 워크플로
+- [x] 11단계: GitHub Actions 워크플로
 - [ ] 12단계: 시연 시나리오와 이력서 대응표 정리
 
 ## 지금 실행할 수 있는 것
@@ -596,3 +596,16 @@ AI나 사람이 실패한 테스트를 고칠 때, 원인을 고치는 대신 **
 자기검증 중 오탐 1건을 고쳤습니다. assertion에 `{ timeout: 30_000 }` 옵션만 붙였는데 '기대값 변경'으로도 잡혀서, 기대값 비교에서 끝의 옵션 객체를 빼도록 바꿨습니다(옵션의 timeout은 GR-05가 따로 봅니다).
 
 알려진 한계: 여러 줄에 걸친 assertion의 matcher·기대값 변경은 줄 단위로 비교하지 못합니다. 이 경우에도 `expect` 개수가 줄면 GR-01이, 테스트가 줄면 GR-08이 잡습니다.
+
+## GitHub Actions CI
+
+| 워크플로 | 언제 | 하는 일 |
+|---|---|---|
+| `ci.yml` | 모든 브랜치 push, PR, 수동 실행 | 정적 검사(lint, type check, 가드레일 자기검증) → 테스트 하네스 실행(API·UI·네거티브·결함 재현·Flaky 개선 후, Flaky 플래그 끔) → HTML 리포트·Excel·PPT 결과서·증적을 artifact로 업로드 → 결함 모드 매트릭스. main에 병합되면 HTML 리포트와 결과서를 GitHub Pages에 배포 |
+| `guardrail.yml` | PR 열림·갱신·라벨 변경 | 판정 완화 검사. `guardrail-approved` 라벨이 없으면 실패 |
+| `nightly.yml` | 매일 18:17 UTC(한국 시간 03:17), 수동 실행 | 전체 회귀(하네스), Flaky 개선 전/후 비교(별도 job, 기본 5회), 결함 검출 확인(전체 모드) |
+
+- **Job Summary**: 하네스는 실행 대상, 결과 요약, 스위트별 결과를 쓰고, 실패가 있으면 실패 원인 분류 표(product / test / env와 근거)를 함께 씁니다. 결함 검출 확인과 Flaky 비교도 결과 표를 씁니다.
+- **결함 모드 매트릭스**: `normal`에서는 결함 재현 테스트가 모두 통과해야 하고, `quota-api-bypass`·`resize-mismatch`에서는 기대한 테스트가 정확히 실패해야(결함을 검출해야) job이 초록색이 됩니다.
+- **Flaky 플래그**: 정기 CI의 stable 테스트는 Flaky 플래그를 끈 상태로 실행하고, naive/stable 비교는 Nightly의 별도 job에서 실행합니다.
+- 세 워크플로의 준비 단계(Node 의존성, Python 결과서 라이브러리, Playwright Chromium 캐시)는 `.github/actions/setup`으로 묶었습니다.

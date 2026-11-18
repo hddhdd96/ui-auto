@@ -1,0 +1,56 @@
+name: 실행 환경 준비
+description: Node 의존성, (선택) Python 결과서 라이브러리, (선택) Playwright Chromium을 설치한다.
+inputs:
+  browsers:
+    description: Playwright Chromium 설치 여부
+    default: 'true'
+  python:
+    description: Excel·PPT 결과서용 Python 라이브러리 설치 여부
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+
+    - name: npm 의존성 설치
+      shell: bash
+      run: npm ci
+
+    - if: inputs.python == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: harness/report/requirements.txt
+
+    - if: inputs.python == 'true'
+      name: 결과서 라이브러리 설치
+      shell: bash
+      run: pip install -r harness/report/requirements.txt
+
+    - if: inputs.browsers == 'true'
+      name: Playwright 버전 확인
+      id: playwright
+      shell: bash
+      run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+    - if: inputs.browsers == 'true'
+      name: Playwright 브라우저 캐시
+      id: browser-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+    - if: inputs.browsers == 'true' && steps.browser-cache.outputs.cache-hit != 'true'
+      name: Playwright Chromium 설치
+      shell: bash
+      run: npx playwright install --with-deps chromium
+
+    - if: inputs.browsers == 'true' && steps.browser-cache.outputs.cache-hit == 'true'
+      name: Playwright 시스템 의존성 설치(브라우저는 캐시 사용)
+      shell: bash
+      run: npx playwright install-deps chromium

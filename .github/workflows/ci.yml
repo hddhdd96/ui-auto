@@ -1,0 +1,113 @@
+name: CI
+
+# push와 PR마다: 정적 검사 → 테스트(하네스) → 결함 모드 매트릭스. main에 병합되면 HTML 리포트를 GitHub Pages에 배포한다.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
+
+jobs:
+  static:
+    name: 정적 검사(lint · type check · 가드레일 자기검증)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          browsers: 'false'
+          python: 'false'
+      - name: lint
+        run: npm run lint
+      - name: type check
+        run: npm run typecheck
+      - name: 가드레일 자기검증
+        run: npm run guardrail:selftest
+
+  test:
+    name: 테스트(하네스 · Flaky 플래그 끔)
+    needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      # 포털을 띄우고, 환경·프로젝트를 API로 고른 뒤 테스트 → 증적 수집 → 실패 원인 분류 → Excel·PPT 결과서까지 만든다.
+      # 결과 요약과 (실패가 있으면) 원인 분류 표는 Job Summary에 기록된다.
+      - name: 하네스 실행(API · UI · 네거티브 · 결함 재현 · Flaky 개선 후)
+        run: npm run harness -- --suites api,ui,negative,defects,flaky-stable
+
+      - name: 리포트·결과서 업로드
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ github.run_number }}
+          path: artifacts/harness/
+          retention-days: 14
+
+      - name: Pages 배포용 사이트 만들기
+        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          RUN=$(cat artifacts/harness/latest.txt)
+          mkdir -p site/reports
+          cp -r "artifacts/harness/$RUN/html-report/." site/
+          cp "artifacts/harness/$RUN/test-report.xlsx" "artifacts/harness/$RUN/test-report.pptx" site/reports/
+
+      - name: Pages artifact 업로드
+        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  defects:
+    name: 결함 모드 매트릭스 (${{ matrix.mode }})
+    needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # normal: 결함 재현 테스트가 모두 통과해야 한다.
+        # 결함 모드: 기대한 결함 재현 테스트가 정확히 실패해야(=결함을 검출해야) 이 job이 성공한다.
+        mode: [normal, quota-api-bypass, resize-mismatch]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          python: 'false'
+      - name: 결함 검출 확인
+        run: npm run defects:check -- ${{ matrix.mode }}
+      - name: 결과 업로드
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: defect-detection-${{ matrix.mode }}-${{ github.run_number }}
+          path: artifacts/defect-detection/
+          retention-days: 14
+
+  deploy-pages:
+    name: HTML 리포트 GitHub Pages 배포
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.test.result != 'skipped' }}
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

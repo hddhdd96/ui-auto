@@ -1,0 +1,38 @@
+name: Guardrail
+
+# PR에서 판정 기준을 느슨하게 만드는 변경(assert 삭제·완화, 기대값 변경, retry·timeout 증가, skip/only, 고정 대기 등)을 찾는다.
+# 사람이 guardrail-approved 라벨을 붙이지 않으면 실패한다. 라벨을 붙이거나 떼면 다시 검사한다.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: guardrail-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guardrail:
+    name: 판정 완화 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          browsers: 'false'
+          python: 'false'
+      - name: 판정 완화 검사
+        env:
+          GUARDRAIL_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'guardrail-approved') }}
+        run: npm run guardrail -- --base origin/${{ github.base_ref }}
+      - name: 결과 업로드
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardrail-${{ github.event.pull_request.number }}-${{ github.run_number }}
+          path: artifacts/guardrail/
