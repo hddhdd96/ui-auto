@@ -30,24 +30,37 @@ let sequence = 0;
 
 const isOn = (name: string) => ['true', '1'].includes((process.env[name] ?? '').toLowerCase());
 
-/** 이 테스트 실행이 기대하는 결함 주입 모드. 포털의 config.defects와 같은 형식이다. */
-export function expectedDefects() {
+/** 이 테스트 실행이 기대하는 포털 모드. 포털의 config.defects, config.flaky.*.enabled와 같은 형식이다. */
+export function expectedPortalMode() {
   return {
-    quotaApiBypass: isOn('DEFECT_QUOTA_API_BYPASS'),
-    resizeMismatch: isOn('DEFECT_RESIZE_MISMATCH'),
+    defects: {
+      quotaApiBypass: isOn('DEFECT_QUOTA_API_BYPASS'),
+      resizeMismatch: isOn('DEFECT_RESIZE_MISMATCH'),
+    },
+    flaky: {
+      deleteLag: isOn('FLAKY_DELETE_LAG'),
+      lateResponse: isOn('FLAKY_LATE_RESPONSE'),
+    },
   };
 }
 
 export const test = base.extend<TestFixtures, WorkerFixtures>({
   portalMode: [async ({ playwright }, use, workerInfo) => {
     const context = await playwright.request.newContext({ baseURL: workerInfo.project.use.baseURL });
-    const actual = (await (await context.get('/api/test/flags')).json()) as { defects: Record<string, boolean> };
+    const flags = (await (await context.get('/api/test/flags')).json()) as {
+      defects: Record<string, boolean>;
+      flaky: Record<string, { enabled?: boolean }>;
+    };
     await context.dispose();
-    const expected = expectedDefects();
+    const actual = {
+      defects: flags.defects,
+      flaky: Object.fromEntries(Object.entries(flags.flaky).filter(([, v]) => typeof v === 'object').map(([k, v]) => [k, !!v.enabled])),
+    };
+    const expected = expectedPortalMode();
     // 이미 떠 있는 다른 모드의 포털을 재사용하면 결과를 믿을 수 없으므로, 테스트를 시작하기 전에 멈춘다.
-    if (JSON.stringify(actual.defects) !== JSON.stringify(expected)) {
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       throw new Error(
-        `테스트가 기대한 결함 주입 모드와 실제 포털의 모드가 다릅니다. 기대: ${JSON.stringify(expected)}, 실제: ${JSON.stringify(actual.defects)}. ` +
+        `테스트가 기대한 포털 모드(결함·Flaky 주입)와 실제 포털의 모드가 다릅니다. 기대: ${JSON.stringify(expected)}, 실제: ${JSON.stringify(actual)}. ` +
         '다른 모드로 떠 있는 포털을 재사용했을 수 있습니다. 포털을 종료하거나 PORTAL_PORT를 바꿔 다시 실행하세요.',
       );
     }

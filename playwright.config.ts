@@ -29,6 +29,9 @@ export default defineConfig({
     { name: 'ui', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },
     { name: 'negative', testDir: './tests/negative', use: { ...devices['Desktop Chrome'] } },
     { name: 'defects', testDir: './tests/defects', use: { ...devices['Desktop Chrome'] } },
+    // Flaky 재현: 같은 Flaky 플래그에서 개선 전(naive)은 간헐적으로 실패하고 개선 후(stable)는 통과해야 한다.
+    { name: 'flaky-naive', testDir: './tests/flaky/naive', use: { ...devices['Desktop Chrome'] } },
+    { name: 'flaky-stable', testDir: './tests/flaky/stable', use: { ...devices['Desktop Chrome'] } },
   ],
   // BASE_URL을 직접 주면 이미 떠 있는 포털을 대상으로 하고, 아니면 로컬 포털을 띄운다.
   webServer: process.env.BASE_URL ? undefined : {
@@ -40,6 +43,8 @@ export default defineConfig({
       TRANSITION_DELAY_MS: process.env.TRANSITION_DELAY_MS ?? '300',
       DEFECT_QUOTA_API_BYPASS: process.env.DEFECT_QUOTA_API_BYPASS ?? 'false',
       DEFECT_RESIZE_MISMATCH: process.env.DEFECT_RESIZE_MISMATCH ?? 'false',
+      // FLAKY_로 시작하는 환경변수(플래그, 확률, 지연 시간, 시드)는 그대로 포털에 넘긴다.
+      ...Object.fromEntries(Object.entries(process.env).filter(([key, value]) => key.startsWith('FLAKY_') && value !== undefined)) as Record<string, string>,
     },
   },
 });

@@ -48,7 +48,7 @@ export class SecurityGroupsPage extends ResourceListPage {
   protected readonly formName = '보안 그룹 생성';
 
   rules(name: string): Locator {
-    return this.cell(name, 2);
+    return this.cell(name, 3);
   }
 
   async create(input: SecurityGroupForm): Promise<void> {

@@ -7,6 +7,10 @@ export interface HttpRecord {
   /** 오류 응답일 때의 오류 코드 */
   errorCode?: string;
   elapsedMs: number;
+  /** api: 테스트 코드가 보낸 요청, browser: 콘솔(브라우저)이 보낸 요청 */
+  source?: 'api' | 'browser';
+  /** 콘솔이 게이트웨이 지시로 재전송한 요청인지 */
+  retry?: boolean;
 }
 
 export interface PollRecord {

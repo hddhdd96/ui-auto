@@ -18,7 +18,8 @@
     "test:negative": "playwright test --project=negative",
     "test:negative:high": "playwright test --project=negative --grep @risk-high",
     "test:defects": "playwright test --project=defects",
-    "defects:check": "tsx scripts/check-defect-detection.ts"
+    "defects:check": "tsx scripts/check-defect-detection.ts",
+    "test:flaky": "playwright test --project=flaky-naive --project=flaky-stable"
   },
   "dependencies": {
     "express": "^5.1.0"
