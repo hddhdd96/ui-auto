@@ -66,6 +66,23 @@ export const config = {
       /** 삭제 처리를 늦추는 시간(ms). 재전송 응답은 이 시간의 절반만큼 늦게 보낸다. */
       delayMs: num('FLAKY_LATE_RESPONSE_MS', 800),
     },
+    /** ③ 화면을 열 때마다 확률에 따라 목록 자동 갱신을 끈다. 메뉴로 다시 열어야 최신 상태가 보인다. */
+    uiStale: {
+      enabled: flag('FLAKY_UI_STALE'),
+      rate: rate('FLAKY_UI_STALE_RATE', 0.5),
+    },
+    /** ④ 리소스 목록 조회(GET) 요청의 연결을 확률에 따라 끊는다. 브라우저에서는 네트워크 오류로 보인다. */
+    network: {
+      enabled: flag('FLAKY_NETWORK'),
+      rate: rate('FLAKY_NETWORK_RATE', 0.5),
+      /** 한 번 끊은 경로는 이 시간(ms) 동안 다시 끊지 않는다. 재시도하면 회복할 수 있게 하기 위해서다. */
+      cooldownMs: num('FLAKY_NETWORK_COOLDOWN_MS', 3000),
+    },
+    /** ④ 화면에서 세션을 연장하면 확률에 따라 쿠키 토큰을 새로 발급하고 이전 토큰을 무효화한다. */
+    tokenRotate: {
+      enabled: flag('FLAKY_TOKEN_ROTATE'),
+      rate: rate('FLAKY_TOKEN_ROTATE_RATE', 0.5),
+    },
   },
 };
 

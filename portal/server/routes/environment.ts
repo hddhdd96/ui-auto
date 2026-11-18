@@ -5,7 +5,7 @@ import { db, FLAVORS, resetStore } from '../store.ts';
 import type { Quota } from '../types.ts';
 import { quotaOf, usageOf } from '../usage.ts';
 import { notFound } from '../errors.ts';
-import { flakyEvents, resetFlaky } from '../inject/flaky.ts';
+import { chance, flakyEvents, recordFlaky, resetFlaky } from '../inject/flaky.ts';
 import { requireInt, requireString } from '../validation.ts';
 import { bodyOf } from './helpers.ts';
 
@@ -17,6 +17,15 @@ environmentRouter.get('/environments', (req, res) => {
   res.json([
     { id: 'local', name: '로컬 Mock 포털', baseUrl: origin, description: '개발자 PC 또는 CI 러너에서 띄운 포털' },
   ]);
+});
+
+/** 콘솔 화면 설정. 콘솔은 화면을 열 때마다 이 값을 받아 목록 자동 갱신 여부를 정한다. */
+environmentRouter.get('/console-config', requireAuth, (_req, res) => {
+  const flaky = config.flaky.uiStale;
+  // [Flaky 주입 ③: FLAKY_UI_STALE] 확률에 따라 이번에 연 화면의 자동 갱신을 끈다.
+  const stale = flaky.enabled && chance(flaky.rate);
+  if (stale) recordFlaky('ui-stale', '이번에 연 화면의 목록 자동 갱신을 끔');
+  res.json({ autoRefresh: !stale });
 });
 
 environmentRouter.get('/projects', requireAuth, (req, res) => {

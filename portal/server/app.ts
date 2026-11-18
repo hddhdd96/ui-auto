@@ -2,6 +2,7 @@ import path from 'node:path';
 import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { ApiError } from './errors.ts';
+import { networkDropMiddleware } from './inject/flaky.ts';
 import { authRouter } from './routes/auth.ts';
 import { environmentRouter } from './routes/environment.ts';
 import { instanceRouter } from './routes/instances.ts';
@@ -13,6 +14,7 @@ export function createApp() {
   app.use(express.json());
 
   const api = express.Router();
+  api.use(networkDropMiddleware);
   api.get('/health', (_req, res) => { res.json({ status: 'ok' }); });
   api.use(authRouter, environmentRouter, instanceRouter, volumeRouter, networkRouter);
   api.use((_req, _res, next) => { next(new ApiError(404, 'NOT_FOUND', '존재하지 않는 API입니다.')); });

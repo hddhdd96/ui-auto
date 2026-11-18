@@ -1,3 +1,4 @@
+import type { NextFunction, Request, Response } from 'express';
 import { config } from '../config.ts';
 
 /**
@@ -44,9 +45,34 @@ export function recordFlaky(type: string, detail: string): void {
 
 export const flakyEvents = (): readonly FlakyEvent[] => events;
 
+/** 연결을 끊을 수 있는 요청: 리소스 목록·단건 조회 */
+const RESOURCE_READ = /^\/(instances|volumes|volume-groups|networks|security-groups)(\/[^/]+)?$/;
+const lastDropped = new Map<string, number>();
+
+/**
+ * [Flaky 주입 ④: FLAKY_NETWORK] 리소스 조회 요청의 소켓을 응답 없이 끊는다.
+ * 브라우저는 네트워크 오류(ERR_EMPTY_RESPONSE)를, 테스트 코드는 socket hang up을 받는다.
+ */
+export function networkDropMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const flaky = config.flaky.network;
+  if (!flaky.enabled || req.method !== 'GET' || !RESOURCE_READ.test(req.path)) {
+    next();
+    return;
+  }
+  const last = lastDropped.get(req.path) ?? 0;
+  if (Date.now() - last < flaky.cooldownMs || !chance(flaky.rate)) {
+    next();
+    return;
+  }
+  lastDropped.set(req.path, Date.now());
+  recordFlaky('network-drop', `GET ${req.path}: 연결 끊김`);
+  req.socket.destroy();
+}
+
 /** 테스트용 리셋: 주입 이력을 비우고 난수를 시드부터 다시 시작한다. */
 export function resetFlaky(): void {
   events.length = 0;
+  lastDropped.clear();
   random = mulberry32(config.flaky.seed);
 }
 

@@ -10,6 +10,8 @@ const state = {
   flavors: [],
   /** 현재 화면의 목록을 다시 불러오는 함수. 자동 갱신 타이머가 부른다. */
   refresh: null,
+  /** 현재 화면의 목록 자동 갱신 여부 */
+  autoRefresh: true,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -529,6 +531,8 @@ async function navigate() {
   const view = $('#view');
   view.replaceChildren();
   try {
+    // 화면을 열 때마다 자동 갱신 여부를 받아 온다. 받아 오지 못하면 자동 갱신을 켠다.
+    state.autoRefresh = (await api('GET', '/console-config').catch(() => ({ autoRefresh: true }))).autoRefresh;
     await ROUTES[hash](view);
     await state.refresh?.();
   } catch (error) {
@@ -537,7 +541,7 @@ async function navigate() {
 }
 
 setInterval(async () => {
-  if (!state.me || !state.refresh) return;
+  if (!state.me || !state.refresh || !state.autoRefresh) return;
   try {
     await state.refresh();
   } catch {
