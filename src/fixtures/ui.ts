@@ -22,6 +22,8 @@ export const test = apiTest.extend<UiOptions & UiFixtures>({
     // 토큰이 만료됐다면 이 요청에서 다시 로그인되어 새 토큰으로 바뀐다.
     await client.expectOk('GET', '/auth/me');
     await context.addCookies([{ name: 'portal_token', value: client.session.token ?? '', url: baseURL }]);
+    // 콘솔이 테스트 대상 프로젝트로 열리게 한다(콘솔은 시작할 때 localStorage의 프로젝트를 쓴다).
+    await context.addInitScript((projectId) => localStorage.setItem('projectId', projectId), client.session.projectId);
 
     const consolePage = new ConsolePage(page);
     await consolePage.goto();

@@ -31,6 +31,21 @@ async function verifyActualState(ctx: RunContext, rule: Verify): Promise<void> {
   if (rule.statusIn) expect(rule.statusIn, `${rule.kind} ${rule.id}의 실제 상태`).toContain(item?.status);
 }
 
+/**
+ * 프로젝트에 따라 달라지는 값. dataset은 프로젝트 ID를 직접 쓰지 않고 이 자리표시자를 쓴다.
+ * project: 테스트 대상 프로젝트, other: 관리자가 접근할 수 있는 다른 프로젝트, member: 일반 사용자의 프로젝트
+ */
+function projectVars(ctx: RunContext): Record<string, string> {
+  const ids = (projectId: string, prefix: string) => ({
+    [`${prefix}.id`]: projectId,
+    [`${prefix}.project`]: projectId,
+    [`${prefix}.network`]: `net-default-${projectId}`,
+    [`${prefix}.sg`]: `sg-default-${projectId}`,
+  });
+  const other = ctx.projectId === 'proj-alpha' ? 'proj-beta' : 'proj-alpha';
+  return { ...ids(ctx.projectId, 'project'), ...ids(other, 'other'), ...ids(ctx.memberApi.session.projectId, 'member') };
+}
+
 for (const area of areas) {
   test.describe(`네거티브 dataset: ${area}`, () => {
     for (const c of cases.filter((x) => x.area === area)) {
@@ -40,7 +55,7 @@ for (const area of areas) {
           const ctx: RunContext = { api, memberApi, bare, projectId: api.session.projectId, uniqueName };
 
           const run = async () => {
-            const vars = { unique: uniqueName('neg'), ...(await runSetup(ctx, c.setup ?? [], defaults.networkId)) };
+            const vars = { unique: uniqueName('neg'), ...projectVars(ctx), ...(await runSetup(ctx, c.setup ?? [], defaults.networkId)) };
             const request = resolvePlaceholders(c.request, vars);
             const verify = resolvePlaceholders(c.verify ?? [], vars);
             const before = { usage: (await api.usage()).usage, quota: await api.quota() };

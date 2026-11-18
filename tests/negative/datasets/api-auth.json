@@ -154,13 +154,13 @@
     },
     {
       "id": "NEG-PERM-003",
-      "title": "일반 사용자가 기본 네트워크를 삭제하면 403 FORBIDDEN이고 네트워크는 그대로다",
+      "title": "일반 사용자가 자기 프로젝트의 기본 네트워크를 삭제하면 403 FORBIDDEN이고 네트워크는 그대로다",
       "category": "permission",
       "risk": "high",
       "request": {
         "as": "member",
         "method": "DELETE",
-        "path": "/networks/net-default-proj-alpha"
+        "path": "/networks/{{member.network}}"
       },
       "expect": {
         "status": 403,
@@ -169,7 +169,8 @@
       "verify": [
         {
           "kind": "networks",
-          "id": "net-default-proj-alpha",
+          "id": "{{member.network}}",
+          "projectId": "{{member.project}}",
           "fields": {
             "cidr": "10.0.0.0/16"
           }
@@ -200,7 +201,7 @@
       "request": {
         "as": "admin",
         "method": "DELETE",
-        "path": "/security-groups/sg-default-proj-beta"
+        "path": "/security-groups/{{other.sg}}"
       },
       "expect": {
         "status": 404,
@@ -209,8 +210,8 @@
       "verify": [
         {
           "kind": "security-groups",
-          "id": "sg-default-proj-beta",
-          "projectId": "proj-beta"
+          "id": "{{other.sg}}",
+          "projectId": "{{other.id}}"
         }
       ]
     }

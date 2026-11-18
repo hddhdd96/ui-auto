@@ -95,7 +95,7 @@ export const test = base.extend<TestOptions & TestFixtures, WorkerFixtures>({
   }, { scope: 'worker' }],
 
   memberSession: [async ({ apiContext }, use) => {
-    const session = newSession(testConfig.member, testConfig.projectId);
+    const session = newSession(testConfig.member, testConfig.memberProjectId);
     await new ApiClient(apiContext, session).login();
     await use(session);
   }, { scope: 'worker' }],

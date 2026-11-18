@@ -85,7 +85,9 @@ async function tokenFor(ctx: RunContext, actor: Actor): Promise<string | null> {
 /** 케이스의 요청을 그대로 보내고, 요청과 응답을 짝지은 결과를 돌려준다. 증적에도 남긴다. */
 export async function sendCaseRequest(ctx: RunContext, request: NegativeCase['request']): Promise<ApiResult> {
   const token = await tokenFor(ctx, request.as ?? 'admin');
-  const headers: Record<string, string> = { 'x-project-id': request.projectId ?? ctx.projectId };
+  // 일반 사용자 요청은 따로 정하지 않으면 그 사용자가 속한 프로젝트로 보낸다.
+  const defaultProject = request.as === 'member' ? ctx.memberApi.session.projectId : ctx.projectId;
+  const headers: Record<string, string> = { 'x-project-id': request.projectId ?? defaultProject };
   if (token) headers.authorization = `Bearer ${token}`;
   const startedAt = Date.now();
   const response = await ctx.bare.fetch(`/api${request.path}`, { method: request.method, headers, data: request.body });
