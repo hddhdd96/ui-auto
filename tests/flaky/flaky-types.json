@@ -1,0 +1,10 @@
+{
+  "description": "Flaky 유형별 TC ID와 켜야 하는 Flaky 플래그. compare-flaky 스크립트가 이 목록으로 naive와 stable을 같은 플래그·같은 시드에서 반복 실행한다.",
+  "types": [
+    { "type": "① 실제 리소스 상태 불일치", "tcId": "FLAKY-DEL-001", "env": { "FLAKY_DELETE_LAG": "true" } },
+    { "type": "② API 응답 혼선", "tcId": "FLAKY-RESP-001", "env": { "FLAKY_LATE_RESPONSE": "true" } },
+    { "type": "③ UI 반영 지연", "tcId": "FLAKY-UI-001", "env": { "FLAKY_UI_STALE": "true" } },
+    { "type": "④ 환경·네트워크 오류(네트워크 끊김)", "tcId": "FLAKY-NET-001", "env": { "FLAKY_NETWORK": "true" } },
+    { "type": "④ 환경·네트워크 오류(토큰 교체)", "tcId": "FLAKY-TOKEN-001", "env": { "FLAKY_TOKEN_ROTATE": "true" } }
+  ]
+}
