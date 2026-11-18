@@ -34,6 +34,10 @@ export default defineConfig<TestOptions>({
     { name: 'flaky-naive', testDir: './tests/flaky/naive', use: { ...devices['Desktop Chrome'] } },
     // stable은 조회 요청이 네트워크 오류로 끝나면 3번까지 다시 보낸다(환경 요인으로 기록).
     { name: 'flaky-stable', testDir: './tests/flaky/stable', use: { ...devices['Desktop Chrome'], networkRetries: 3 } },
+    // 실패 원인 분류기 검증용으로 일부러 실패하게 만든 샘플. TRIAGE_SAMPLES=1일 때만 포함한다.
+    ...(process.env.TRIAGE_SAMPLES === '1'
+      ? [{ name: 'triage-samples', testDir: './tests/triage-samples', use: { ...devices['Desktop Chrome'] } }]
+      : []),
   ],
   // BASE_URL을 직접 주면 이미 떠 있는 포털을 대상으로 하고, 아니면 로컬 포털을 띄운다.
   webServer: process.env.BASE_URL ? undefined : {
