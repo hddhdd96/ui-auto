@@ -5,6 +5,7 @@ import { db, FLAVORS, resetStore } from '../store.ts';
 import type { Quota } from '../types.ts';
 import { quotaOf, usageOf } from '../usage.ts';
 import { notFound } from '../errors.ts';
+import { flakyEvents, resetFlaky } from '../inject/flaky.ts';
 import { requireInt, requireString } from '../validation.ts';
 import { bodyOf } from './helpers.ts';
 
@@ -52,6 +53,7 @@ environmentRouter.get('/usage', requireAuth, (req, res) => {
 /** 테스트용: 모든 리소스와 쿼터를 초기 상태로 되돌린다. 로그인 세션은 유지한다. */
 environmentRouter.post('/test/reset', (_req, res) => {
   resetStore();
+  resetFlaky();
   res.json({ ok: true });
 });
 
@@ -61,6 +63,11 @@ environmentRouter.post('/test/expire-session', (req, res) => {
   if (!session) throw notFound('세션');
   session.expiresAt = Date.now() - 1;
   res.json({ ok: true });
+});
+
+/** 테스트용: Flaky 주입 이력. 실패가 환경 요인(주입된 지연·재전송)과 겹쳤는지 판단하는 근거로 쓴다. */
+environmentRouter.get('/test/flaky-events', (_req, res) => {
+  res.json(flakyEvents());
 });
 
 /** 테스트용: 현재 포털 설정을 보여준다. */

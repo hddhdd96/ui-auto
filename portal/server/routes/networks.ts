@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { requireAdmin, requireAuth } from '../auth.ts';
-import { badRequest, conflict, notFound } from '../errors.ts';
+import { config } from '../config.ts';
+import { ApiError, badRequest, conflict, notFound } from '../errors.ts';
+import { chance, RETRY_AFTER_HEADER, RETRY_MARK_HEADER, recordFlaky, sleep } from '../inject/flaky.ts';
+import { later } from '../lifecycle.ts';
 import { db, nextId } from '../store.ts';
 import type { Network, SecurityGroup, SecurityGroupRule } from '../types.ts';
 import { assertQuota } from '../usage.ts';
@@ -114,17 +117,53 @@ networkRouter.post('/security-groups', (req, res) => {
   }
   assertQuota(base.projectId, { securityGroups: 1 });
   const group: SecurityGroup = {
-    ...base, description: typeof body.description === 'string' ? body.description : '', rules,
+    ...base, status: 'ACTIVE', description: typeof body.description === 'string' ? body.description : '', rules,
   };
   db.securityGroups.set(group.id, group);
   res.status(201).json(group);
 });
 
-networkRouter.delete('/security-groups/:id', (req, res) => {
+function deleteSecurityGroup(req: Parameters<typeof findInProject>[0]) {
   const group = findInProject(req, db.securityGroups, req.params.id, '보안 그룹');
+  if (group.status === 'DELETING') throw badRequest('ALREADY_DELETING', '이미 삭제 중인 보안 그룹입니다.');
   if ([...db.instances.values()].some((i) => i.securityGroupIds.includes(group.id))) {
     throw badRequest('RESOURCE_IN_USE', '인스턴스가 쓰고 있는 보안 그룹은 삭제할 수 없습니다.');
   }
-  db.securityGroups.delete(group.id);
+  group.status = 'DELETING';
+  later(() => { db.securityGroups.delete(group.id); });
+  return group;
+}
+
+networkRouter.delete('/security-groups/:id', async (req, res) => {
+  const flaky = config.flaky.lateResponse;
+  const isRetry = req.get(RETRY_MARK_HEADER) !== undefined;
+
+  if (flaky.enabled && isRetry) {
+    // [Flaky 주입 ②: FLAKY_LATE_RESPONSE] 재전송된 삭제는 바로 처리하지만(대부분 400 ALREADY_DELETING),
+    // 응답을 늦게 보내서 다음 단계의 요청 도중에 도착하게 한다.
+    const holdMs = Math.round(flaky.delayMs / 2);
+    recordFlaky('late-response', `보안 그룹 ${req.params.id}: 재전송 응답을 ${holdMs}ms 늦게 보냄`);
+    try {
+      deleteSecurityGroup(req);
+    } catch (error) {
+      if (error instanceof ApiError) await sleep(holdMs);
+      throw error;
+    }
+    await sleep(holdMs);
+    res.json(deleteAccepted());
+    return;
+  }
+
+  if (flaky.enabled && chance(flaky.rate)) {
+    // 처리를 늦추고, 콘솔에 같은 삭제를 50ms 뒤 다시 보내라고 지시한다.
+    recordFlaky('late-response', `보안 그룹 ${req.params.id}: 처리를 ${flaky.delayMs}ms 늦추고 재전송 지시`);
+    await sleep(flaky.delayMs);
+    deleteSecurityGroup(req);
+    res.set(RETRY_AFTER_HEADER, '50');
+    res.json(deleteAccepted());
+    return;
+  }
+
+  deleteSecurityGroup(req);
   res.json(deleteAccepted());
 });

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { requireAuth } from '../auth.ts';
+import { config } from '../config.ts';
 import { badRequest, conflict } from '../errors.ts';
+import { chance, RETRY_AFTER_HEADER, RETRY_MARK_HEADER, recordFlaky } from '../inject/flaky.ts';
 import { later } from '../lifecycle.ts';
 import { db, nextId } from '../store.ts';
 import type { Volume, VolumeGroup } from '../types.ts';
@@ -123,12 +125,26 @@ volumeRouter.delete('/volume-groups/:id', (req, res) => {
   const group = findInProject(req, db.volumeGroups, req.params.id, '볼륨 그룹');
   if (group.status === 'DELETING') throw badRequest('ALREADY_DELETING', '이미 삭제 중인 볼륨 그룹입니다.');
   if (group.status === 'CREATING') throw badRequest('INVALID_STATE', 'CREATING 상태에서는 삭제할 수 없습니다.');
+
+  // [Flaky 주입 ①: FLAKY_DELETE_LAG] 재전송이 아닌 최초 요청에만 적용한다.
+  const flaky = config.flaky.deleteLag;
+  const isRetry = req.get(RETRY_MARK_HEADER) !== undefined;
+  const lagged = flaky.enabled && !isRetry && chance(flaky.rate);
+  const late400 = flaky.enabled && !isRetry && chance(flaky.late400Rate);
+
   group.status = 'DELETING';
   later(() => {
     db.volumeGroups.delete(group.id);
     for (const volume of db.volumes.values()) {
       if (volume.groupId === group.id) volume.groupId = null;
     }
-  });
+  }, lagged ? flaky.lagMs : config.transitionDelayMs);
+
+  if (lagged) recordFlaky('delete-lag', `볼륨 그룹 ${group.id}: DELETING을 ${flaky.lagMs}ms 유지`);
+  if (late400) {
+    // 콘솔이 같은 삭제를 다시 보내게 해서, 이미 DELETING인 그룹에 대한 400이 늦게 도착하게 한다.
+    res.set(RETRY_AFTER_HEADER, '100');
+    recordFlaky('delete-late-400', `볼륨 그룹 ${group.id}: 100ms 뒤 삭제 재전송 지시`);
+  }
   res.json(deleteAccepted());
 });

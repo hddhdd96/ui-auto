@@ -86,6 +86,7 @@ export interface SecurityGroupRule {
 }
 
 export interface SecurityGroup extends Base {
+  status: 'ACTIVE' | 'DELETING';
   description: string;
   rules: SecurityGroupRule[];
 }

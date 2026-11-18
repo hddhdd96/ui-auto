@@ -65,7 +65,7 @@ function initialState(epoch: number): State {
     });
     const sgId = `sg-default-${project.id}`;
     state.securityGroups.set(sgId, {
-      id: sgId, projectId: project.id, name: 'default-sg', createdAt, description: '기본 보안 그룹',
+      id: sgId, projectId: project.id, name: 'default-sg', createdAt, status: 'ACTIVE', description: '기본 보안 그룹',
       rules: [{ direction: 'egress', protocol: 'tcp', port: null, cidr: '0.0.0.0/0' }],
     });
   }

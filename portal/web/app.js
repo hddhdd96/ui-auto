@@ -37,8 +37,9 @@ function tokenFromCookie() {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-async function api(method, path, body) {
+async function api(method, path, body, retry = false) {
   const headers = { 'content-type': 'application/json' };
+  if (retry) headers['x-portal-retry'] = '1';
   const token = tokenFromCookie();
   if (token) headers.authorization = `Bearer ${token}`;
   if (state.projectId) headers['x-project-id'] = state.projectId;
@@ -46,6 +47,12 @@ async function api(method, path, body) {
     method, headers, body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => null);
+  // 게이트웨이가 재전송을 지시하면(x-portal-retry-ms) 같은 요청을 백그라운드로 한 번 더 보낸다.
+  // 재전송 결과는 화면에 표시하지 않는다(사용자에게는 보이지 않고 네트워크에만 남는다).
+  const retryMs = res.headers.get('x-portal-retry-ms');
+  if (retryMs && !retry) {
+    setTimeout(() => { api(method, path, body, true).catch(() => {}); }, Number(retryMs));
+  }
   if (!res.ok) {
     const error = new Error(data?.error?.message ?? `요청에 실패했습니다 (HTTP ${res.status}).`);
     error.status = res.status;
@@ -467,6 +474,7 @@ async function securityGroupsView(view) {
 
   const table = createTable('보안 그룹 목록', [
     { header: '이름', cell: (r) => r.name },
+    { header: '상태', cell: (r) => statusBadge(r.status) },
     { header: '설명', cell: (r) => r.description || '-' },
     { header: '규칙', cell: (r) => r.rules.map((x) => `${directionLabel[x.direction]} ${x.protocol.toUpperCase()} ${x.port ?? '전체'} ${x.cidr}`).join(', ') || '-' },
     {
