@@ -1,0 +1,595 @@
+{
+  "area": "인스턴스",
+  "description": "인스턴스 생성·사양 변경·삭제의 입력 규칙과 상태 규칙",
+  "riskReason": "쿼터 초과와 진행 중 상태의 작업은 UI에서는 막히지만 API로는 그대로 요청할 수 있어 결함이 자주 나는 영역이다.",
+  "cases": [
+    {
+      "id": "NEG-INST-001",
+      "title": "이름을 빠뜨리면 400 REQUIRED",
+      "category": "required",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "REQUIRED",
+        "field": "name"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-002",
+      "title": "이름이 빈 문자열이면 400 REQUIRED",
+      "category": "required",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "REQUIRED",
+        "field": "name"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-003",
+      "title": "이름이 2자(최소 3자 미만)면 400 INVALID_LENGTH",
+      "category": "boundary",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "ab",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_LENGTH",
+        "field": "name"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "ab",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-004",
+      "title": "이름이 정확히 3자(최소 경계)면 생성된다",
+      "category": "boundary",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "abc",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 202
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "abc",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-005",
+      "title": "이름이 정확히 30자(최대 경계)면 생성된다",
+      "category": "boundary",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "qa-boundary-name-max-length-30",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 202
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "qa-boundary-name-max-length-30",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-006",
+      "title": "이름이 31자(최대 30자 초과)면 400 INVALID_LENGTH",
+      "category": "boundary",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "qa-boundary-name-over-length-31",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_LENGTH",
+        "field": "name"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "qa-boundary-name-over-length-31",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-007",
+      "title": "이름이 대문자로 시작하면 400 INVALID_FORMAT",
+      "category": "format",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "Web-01",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_FORMAT",
+        "field": "name"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "Web-01",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-008",
+      "title": "이름이 숫자로 시작하면 400 INVALID_FORMAT",
+      "category": "format",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "1web",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_FORMAT",
+        "field": "name"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "1web",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-009",
+      "title": "이름에 한글이 있으면 400 INVALID_FORMAT",
+      "category": "format",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "웹서버",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_FORMAT",
+        "field": "name"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "웹서버",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-010",
+      "title": "이름에 밑줄이 있으면 400 INVALID_FORMAT",
+      "category": "format",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "qa_web",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_FORMAT",
+        "field": "name"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "qa_web",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-011",
+      "title": "같은 이름의 인스턴스가 있으면 409 DUPLICATE_NAME",
+      "category": "duplicate",
+      "risk": "normal",
+      "setup": [
+        {
+          "type": "instance",
+          "as": "dup"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "{{dup.name}}",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 409,
+        "code": "DUPLICATE_NAME"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "{{dup.name}}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-012",
+      "title": "사양을 빠뜨리면 400 REQUIRED",
+      "category": "required",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "{{unique}}",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "REQUIRED",
+        "field": "flavorId"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-013",
+      "title": "없는 사양이면 400 INVALID_REFERENCE",
+      "category": "reference",
+      "risk": "normal",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "{{unique}}",
+          "flavorId": "huge",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_REFERENCE",
+        "field": "flavorId"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-014",
+      "title": "다른 프로젝트의 네트워크를 쓰면 400 INVALID_REFERENCE",
+      "category": "reference",
+      "risk": "high",
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "{{unique}}",
+          "flavorId": "small",
+          "networkId": "{{other.network}}"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_REFERENCE",
+        "field": "networkId"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-015",
+      "title": "인스턴스 수 쿼터를 넘으면 409 QUOTA_EXCEEDED",
+      "category": "quota",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "instance",
+          "as": "first"
+        },
+        {
+          "type": "quota",
+          "values": {
+            "instances": 1
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "{{unique}}",
+          "flavorId": "small",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 409,
+        "code": "QUOTA_EXCEEDED"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-016",
+      "title": "vCPU 쿼터를 넘는 사양이면 409 QUOTA_EXCEEDED",
+      "category": "quota",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "quota",
+          "values": {
+            "vcpus": 7
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/instances",
+        "body": {
+          "name": "{{unique}}",
+          "flavorId": "xlarge",
+          "networkId": "{{project.network}}"
+        }
+      },
+      "expect": {
+        "status": 409,
+        "code": "QUOTA_EXCEEDED"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "name": "{{unique}}",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-017",
+      "title": "현재와 같은 사양으로 변경하면 400 SAME_FLAVOR이고 사양은 그대로다",
+      "category": "state",
+      "risk": "normal",
+      "setup": [
+        {
+          "type": "instance",
+          "as": "inst"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/instances/{{inst.id}}/resize",
+        "body": {
+          "flavorId": "small"
+        }
+      },
+      "expect": {
+        "status": 400,
+        "code": "SAME_FLAVOR",
+        "field": "flavorId"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "id": "{{inst.id}}",
+          "fields": {
+            "status": "ACTIVE",
+            "flavorId": "small"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-018",
+      "title": "사양 변경으로 vCPU 쿼터를 넘으면 409 QUOTA_EXCEEDED이고 사양은 그대로다",
+      "category": "quota",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "instance",
+          "as": "inst"
+        },
+        {
+          "type": "quota",
+          "values": {
+            "vcpus": 3
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/instances/{{inst.id}}/resize",
+        "body": {
+          "flavorId": "large"
+        }
+      },
+      "expect": {
+        "status": 409,
+        "code": "QUOTA_EXCEEDED"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "id": "{{inst.id}}",
+          "fields": {
+            "status": "ACTIVE",
+            "flavorId": "small"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-019",
+      "title": "생성 중(CREATING)인 인스턴스의 사양을 바꾸면 409 INVALID_STATE",
+      "category": "state",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "instanceCreating",
+          "as": "busy"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/instances/{{busy.id}}/resize",
+        "body": {
+          "flavorId": "medium"
+        }
+      },
+      "expect": {
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "id": "{{busy.id}}",
+          "fields": {
+            "flavorId": "small"
+          },
+          "statusIn": [
+            "CREATING",
+            "ACTIVE"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "NEG-INST-020",
+      "title": "생성 중(CREATING)인 인스턴스를 삭제하면 400 INVALID_STATE이고 삭제가 시작되지 않는다",
+      "category": "state",
+      "risk": "high",
+      "setup": [
+        {
+          "type": "instanceCreating",
+          "as": "busy"
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "path": "/instances/{{busy.id}}"
+      },
+      "expect": {
+        "status": 400,
+        "code": "INVALID_STATE"
+      },
+      "verify": [
+        {
+          "kind": "instances",
+          "id": "{{busy.id}}",
+          "statusIn": [
+            "CREATING",
+            "ACTIVE"
+          ]
+        }
+      ]
+    }
+  ]
+}

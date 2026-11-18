@@ -1,0 +1,6 @@
+diff --git a/playwright.config.ts b/playwright.config.ts
+--- a/playwright.config.ts
++++ b/playwright.config.ts
+@@ -14,1 +14,1 @@
+-  retries: 0,
++  retries: 2,

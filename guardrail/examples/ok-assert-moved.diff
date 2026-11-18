@@ -1,0 +1,7 @@
+diff --git a/tests/api/instance.spec.ts b/tests/api/instance.spec.ts
+--- a/tests/api/instance.spec.ts
++++ b/tests/api/instance.spec.ts
+@@ -10,1 +10,0 @@
+-    expect(instance.status).toBe('ACTIVE');
+@@ -40,0 +39,1 @@
++    expect(instance.status).toBe('ACTIVE');

@@ -1,0 +1,6 @@
+diff --git a/tests/api/network.spec.ts b/tests/api/network.spec.ts
+--- a/tests/api/network.spec.ts
++++ b/tests/api/network.spec.ts
+@@ -5,1 +5,1 @@
+-  test('API-NET-001 네트워크', async () => {
++  test.only('API-NET-001 네트워크', async () => {

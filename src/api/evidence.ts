@@ -1,0 +1,52 @@
+/** 테스트 한 건의 증적: HTTP 응답 이력(2xx 포함)과 상태 폴링 이력. */
+export interface HttpRecord {
+  at: string;
+  method: string;
+  path: string;
+  status: number;
+  /** 오류 응답일 때의 오류 코드 */
+  errorCode?: string;
+  elapsedMs: number;
+  /** api: 테스트 코드가 보낸 요청, browser: 콘솔(브라우저)이 보낸 요청 */
+  source?: 'api' | 'browser';
+  /** 콘솔이 게이트웨이 지시로 재전송한 요청인지 */
+  retry?: boolean;
+}
+
+export interface PollRecord {
+  at: string;
+  /** 무엇을 기다렸는지. 예: "볼륨 vol-0001 → AVAILABLE" */
+  what: string;
+  /** 그 시점에 관측한 값. 예: "CREATING", "목록에 없음" */
+  observed: string;
+}
+
+/**
+ * 원인별 로그. 테스트가 실행 중에 만난 문제를 원인 분류와 함께 남긴다.
+ * env: 네트워크 끊김, 토큰 교체처럼 제품 결함이 아닌 환경 요인 / product: 제품 동작이 기대와 다름 / test: 테스트 코드 문제
+ */
+export interface CauseRecord {
+  at: string;
+  cause: 'env' | 'product' | 'test';
+  detail: string;
+  /** 테스트가 스스로 회복했는지 */
+  recovered: boolean;
+}
+
+export class Evidence {
+  readonly http: HttpRecord[] = [];
+  readonly polls: PollRecord[] = [];
+  readonly causes: CauseRecord[] = [];
+
+  recordCause(cause: CauseRecord['cause'], detail: string, recovered: boolean): void {
+    this.causes.push({ at: new Date().toISOString(), cause, detail, recovered });
+  }
+
+  recordHttp(record: Omit<HttpRecord, 'at'>): void {
+    this.http.push({ at: new Date().toISOString(), ...record });
+  }
+
+  recordPoll(what: string, observed: string): void {
+    this.polls.push({ at: new Date().toISOString(), what, observed });
+  }
+}

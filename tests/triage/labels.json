@@ -1,0 +1,70 @@
+{
+  "description": "실패 원인 분류기의 정확도를 계산하기 위한 정답(라벨). 시나리오마다 포털 모드와 실행할 테스트를 정하고, 실패해야 하는 TC와 그 정답 분류를 적는다.",
+  "scenarios": [
+    {
+      "name": "결함: 쿼터 초과 API 우회",
+      "projects": ["defects", "negative"],
+      "grep": "DEF-QUOTA|NEG-INST-01[56]",
+      "env": { "DEFECT_QUOTA_API_BYPASS": "true" },
+      "labels": {
+        "DEF-QUOTA-001": { "category": "product", "why": "API가 쿼터 초과 요청을 접수해 ERROR 인스턴스를 만든다" },
+        "DEF-QUOTA-002": { "category": "product", "why": "대시보드 사용량이 쿼터를 넘는다" },
+        "NEG-INST-015": { "category": "product", "why": "인스턴스 수 쿼터 초과가 409로 거부되지 않는다" },
+        "NEG-INST-016": { "category": "product", "why": "vCPU 쿼터 초과가 409로 거부되지 않는다" }
+      }
+    },
+    {
+      "name": "결함: 사양 변경 후 표시 사양 불일치",
+      "projects": ["defects"],
+      "grep": "DEF-RESIZE",
+      "env": { "DEFECT_RESIZE_MISMATCH": "true" },
+      "labels": {
+        "DEF-RESIZE-001": { "category": "product", "why": "화면의 사양 표시가 실제 사양과 다르다" },
+        "DEF-RESIZE-002": { "category": "product", "why": "API의 표시용 사양 이름이 실제 사양과 다르다" }
+      }
+    },
+    {
+      "name": "Flaky ①: 삭제 지연(개선 전 테스트)",
+      "projects": ["flaky-naive"], "grep": "FLAKY-DEL-001",
+      "env": { "FLAKY_DELETE_LAG": "true", "FLAKY_RATE": "1", "FLAKY_SEED": "7" },
+      "labels": { "FLAKY-DEL-001": { "category": "test", "why": "고정 1초 대기 뒤 판정하고 늦은 재전송 400을 실패로 본 테스트 코드 문제" } }
+    },
+    {
+      "name": "Flaky ②: 응답 혼선(개선 전 테스트)",
+      "projects": ["flaky-naive"], "grep": "FLAKY-RESP-001",
+      "env": { "FLAKY_LATE_RESPONSE": "true", "FLAKY_RATE": "1", "FLAKY_SEED": "7" },
+      "labels": { "FLAKY-RESP-001": { "category": "test", "why": "앞 단계의 늦은 400을 현재 단계 결과로 해석한 테스트 코드 문제" } }
+    },
+    {
+      "name": "Flaky ③: UI 반영 지연(개선 전 테스트)",
+      "projects": ["flaky-naive"], "grep": "FLAKY-UI-001",
+      "env": { "FLAKY_UI_STALE": "true", "FLAKY_RATE": "1", "FLAKY_SEED": "7" },
+      "labels": { "FLAKY-UI-001": { "category": "test", "why": "고정 2초 대기 뒤 갱신되지 않은 행을 읽은 테스트 코드 문제" } }
+    },
+    {
+      "name": "Flaky ④: 네트워크 끊김(개선 전 테스트)",
+      "projects": ["flaky-naive"], "grep": "FLAKY-NET-001",
+      "env": { "FLAKY_NETWORK": "true", "FLAKY_RATE": "1", "FLAKY_SEED": "7" },
+      "labels": { "FLAKY-NET-001": { "category": "env", "why": "연결 끊김으로 응답을 받지 못함" } }
+    },
+    {
+      "name": "Flaky ④: 토큰 교체(개선 전 테스트)",
+      "projects": ["flaky-naive"], "grep": "FLAKY-TOKEN-001",
+      "env": { "FLAKY_TOKEN_ROTATE": "true", "FLAKY_RATE": "1", "FLAKY_SEED": "7" },
+      "labels": { "FLAKY-TOKEN-001": { "category": "env", "why": "세션 연장으로 토큰이 바뀌어 이전 토큰이 401을 받음" } }
+    },
+    {
+      "name": "분류기 검증 샘플",
+      "projects": ["triage-samples"], "grep": "TRIAGE-SAMPLE",
+      "env": { "TRIAGE_SAMPLES": "1" },
+      "labels": {
+        "TRIAGE-SAMPLE-001": { "category": "test", "why": "화면에 없는 버튼 이름(locator 오류)" },
+        "TRIAGE-SAMPLE-002": { "category": "test", "why": "여러 요소에 맞는 locator(strict mode 위반)" },
+        "TRIAGE-SAMPLE-003": { "category": "test", "why": "테스트가 같은 이름의 데이터를 두 번 만듦" },
+        "TRIAGE-SAMPLE-004": { "category": "test", "why": "테스트 코드의 없는 값 접근(TypeError)" },
+        "TRIAGE-SAMPLE-005": { "category": "env", "why": "포털에 연결할 수 없음" },
+        "TRIAGE-SAMPLE-006": { "category": "test", "why": "API 규칙(202)과 다른 기대값을 적은 테스트 버그. 증상이 제품 결함과 같아 규칙으로 구분하기 어려운 사례" }
+      }
+    }
+  ]
+}

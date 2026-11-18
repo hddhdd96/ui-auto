@@ -1,13 +1,8 @@
 node_modules/
 .env
-.playwright/
 test-results/
 playwright-report/
-report/
-log/
-*.png
-*.webm
-*.zip
-.DS_Store
+artifacts/
 __pycache__/
 *.pyc
+.DS_Store

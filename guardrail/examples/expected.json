@@ -1,0 +1,63 @@
+{
+  "description": "자기검증용 예시 diff와 기대하는 위반 규칙. 빈 배열은 통과해야 하는 변경이다.",
+  "cases": {
+    "assert-removed.diff": [
+      "GR-01-ASSERT-REMOVED"
+    ],
+    "matcher-weakened.diff": [
+      "GR-02-ASSERT-WEAKENED"
+    ],
+    "expect-soft.diff": [
+      "GR-02-ASSERT-WEAKENED"
+    ],
+    "expected-value-changed.diff": [
+      "GR-03-EXPECTED-CHANGED"
+    ],
+    "dataset-expect-changed.diff": [
+      "GR-03-EXPECTED-CHANGED"
+    ],
+    "retries-increased.diff": [
+      "GR-04-RETRY-INCREASED"
+    ],
+    "network-retries-increased.diff": [
+      "GR-04-RETRY-INCREASED"
+    ],
+    "timeout-increased.diff": [
+      "GR-05-TIMEOUT-INCREASED"
+    ],
+    "assert-timeout-added.diff": [
+      "GR-05-TIMEOUT-INCREASED"
+    ],
+    "set-timeout-added.diff": [
+      "GR-05-TIMEOUT-INCREASED"
+    ],
+    "skip-added.diff": [
+      "GR-06-TEST-SKIPPED"
+    ],
+    "only-added.diff": [
+      "GR-06-TEST-SKIPPED"
+    ],
+    "fixed-wait-added.diff": [
+      "GR-07-FIXED-WAIT"
+    ],
+    "test-removed.diff": [
+      "GR-08-TEST-REMOVED"
+    ],
+    "dataset-case-removed.diff": [
+      "GR-08-TEST-REMOVED"
+    ],
+    "guardrail-changed.diff": [
+      "GR-09-GUARDRAIL-CHANGED"
+    ],
+    "agents-md-changed.diff": [
+      "GR-09-GUARDRAIL-CHANGED"
+    ],
+    "ok-new-test-added.diff": [],
+    "ok-matcher-strengthened.diff": [],
+    "ok-timeout-decreased.diff": [],
+    "ok-assert-moved.diff": [],
+    "ok-naive-wait.diff": [],
+    "ok-comment-only.diff": [],
+    "ok-portal-code.diff": []
+  }
+}

@@ -1,0 +1,6 @@
+diff --git a/tests/defects/resize-mismatch.spec.ts b/tests/defects/resize-mismatch.spec.ts
+--- a/tests/defects/resize-mismatch.spec.ts
++++ b/tests/defects/resize-mismatch.spec.ts
+@@ -18,1 +18,1 @@
+-    expect(resized.flavorId).toBe('large');
++    expect(resized.flavorId).toBe('small');

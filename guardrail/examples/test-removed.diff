@@ -1,0 +1,7 @@
+diff --git a/tests/api/network.spec.ts b/tests/api/network.spec.ts
+--- a/tests/api/network.spec.ts
++++ b/tests/api/network.spec.ts
+@@ -30,3 +30,0 @@
+-  test('API-SG-002 사용 중인 보안 그룹 삭제는 거부된다', async ({ api }) => {
+-    const result = await api.delete('security-groups', id);
+-  });

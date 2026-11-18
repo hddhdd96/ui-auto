@@ -1,0 +1,108 @@
+{
+  "area": "볼륨 생성 화면",
+  "description": "볼륨 생성 폼이 서버와 같은 입력 규칙으로 잘못된 값을 막는지 확인한다. 화면이 막지 못하면 서버까지 요청이 가므로, 화면 검증과 API 검증을 따로 확인한다.",
+  "cases": [
+    {
+      "id": "NEG-UI-VOL-001",
+      "title": "이름을 비우면 '이름은 필수입니다.'를 보여준다",
+      "category": "required",
+      "risk": "normal",
+      "input": {
+        "name": "",
+        "sizeGb": "10"
+      },
+      "expectMessage": "이름은 필수입니다."
+    },
+    {
+      "id": "NEG-UI-VOL-002",
+      "title": "이름이 2자면 길이 오류를 보여준다",
+      "category": "boundary",
+      "risk": "normal",
+      "input": {
+        "name": "ab",
+        "sizeGb": "10"
+      },
+      "expectMessage": "이름은 3~30자여야 합니다."
+    },
+    {
+      "id": "NEG-UI-VOL-003",
+      "title": "이름이 31자면 길이 오류를 보여준다",
+      "category": "boundary",
+      "risk": "normal",
+      "input": {
+        "name": "qa-boundary-name-over-length-31",
+        "sizeGb": "10"
+      },
+      "expectMessage": "이름은 3~30자여야 합니다."
+    },
+    {
+      "id": "NEG-UI-VOL-004",
+      "title": "이름이 대문자로 시작하면 형식 오류를 보여준다",
+      "category": "format",
+      "risk": "normal",
+      "input": {
+        "name": "Data-01",
+        "sizeGb": "10"
+      },
+      "expectMessage": "이름은 영문 소문자로 시작하고 영문 소문자, 숫자, 하이픈만 쓸 수 있습니다."
+    },
+    {
+      "id": "NEG-UI-VOL-005",
+      "title": "크기를 비우면 크기 오류를 보여준다",
+      "category": "required",
+      "risk": "normal",
+      "input": {
+        "name": "{{unique}}",
+        "sizeGb": ""
+      },
+      "expectMessage": "크기는 1~1000 GB 범위의 정수여야 합니다."
+    },
+    {
+      "id": "NEG-UI-VOL-006",
+      "title": "크기가 0이면 크기 오류를 보여준다",
+      "category": "boundary",
+      "risk": "normal",
+      "input": {
+        "name": "{{unique}}",
+        "sizeGb": "0"
+      },
+      "expectMessage": "크기는 1~1000 GB 범위의 정수여야 합니다."
+    },
+    {
+      "id": "NEG-UI-VOL-007",
+      "title": "크기가 1001이면 크기 오류를 보여준다",
+      "category": "boundary",
+      "risk": "normal",
+      "input": {
+        "name": "{{unique}}",
+        "sizeGb": "1001"
+      },
+      "expectMessage": "크기는 1~1000 GB 범위의 정수여야 합니다."
+    },
+    {
+      "id": "NEG-UI-VOL-008",
+      "title": "크기가 소수면 크기 오류를 보여준다",
+      "category": "format",
+      "risk": "normal",
+      "input": {
+        "name": "{{unique}}",
+        "sizeGb": "10.5"
+      },
+      "expectMessage": "크기는 1~1000 GB 범위의 정수여야 합니다."
+    },
+    {
+      "id": "NEG-UI-VOL-009",
+      "title": "볼륨 용량 쿼터를 넘으면 화면에서 막고 쿼터 오류를 보여준다",
+      "category": "quota",
+      "risk": "high",
+      "quota": {
+        "volumeGb": 50
+      },
+      "input": {
+        "name": "{{unique}}",
+        "sizeGb": "51"
+      },
+      "expectMessage": "쿼터를 초과해서 만들 수 없습니다: volumeGb"
+    }
+  ]
+}

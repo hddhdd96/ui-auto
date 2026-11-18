@@ -1,23 +1,45 @@
 {
-  "name": "ui-auto",
-  "version": "2.0.0",
+  "name": "mock-cloud-portal-qa",
+  "version": "1.0.0",
   "private": true,
-  "description": "Public QA portfolio demo: Playwright POM, TC-ID suites, flaky self-healing, CI assertion guardrail",
+  "description": "Mock 클라우드 포털(웹 콘솔 + REST API)과 Playwright UI/API 테스트 자동화, 테스트 하네스, CI 가드레일을 담은 QA 포트폴리오",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "test": "playwright test --project=unit --project=suites",
-    "test:tc": "playwright test --project=tc",
-    "test:suites": "playwright test --project=suites",
-    "test:unit": "playwright test --project=unit",
-    "test:headed": "playwright test --project=suites --headed",
-    "report": "playwright show-report",
+    "portal": "tsx portal/server/main.ts",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "guardrail": "python3 guardrail/check_test_weakening.py --base origin/main",
-    "guardrail:selftest": "python3 -m unittest discover -s guardrail -v"
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "report": "playwright show-report",
+    "test:ui": "playwright test --project=ui",
+    "test:negative": "playwright test --project=negative",
+    "test:negative:high": "playwright test --project=negative --grep @risk-high",
+    "test:defects": "playwright test --project=defects",
+    "defects:check": "tsx scripts/check-defect-detection.ts",
+    "test:flaky": "playwright test --project=flaky-naive --project=flaky-stable",
+    "flaky:compare": "tsx scripts/compare-flaky.ts",
+    "triage": "tsx harness/triage/cli.ts",
+    "triage:eval": "tsx scripts/triage-eval.ts",
+    "harness": "tsx harness/run.ts",
+    "guardrail": "tsx guardrail/check.ts",
+    "guardrail:selftest": "playwright test --project=guardrail"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@anthropic-ai/sdk": "^1.10.0",
+    "@eslint/js": "^9.30.0",
+    "@playwright/test": "1.63.0",
+    "@types/express": "^5.0.3",
     "@types/node": "^22.10.0",
-    "dotenv": "^16.4.7",
-    "typescript": "^5.8.3"
+    "eslint": "^9.30.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.0",
+    "zod": "^4.6.7"
   }
 }

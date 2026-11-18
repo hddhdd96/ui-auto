@@ -1,0 +1,13 @@
+{
+  "description": "가드레일이 검사하는 파일 범위. include에 맞고 exclude에 맞지 않는 파일의 변경만 검사한다.",
+  "include": ["tests/", "src/", "playwright.config.ts", "package.json"],
+  "exclude": [
+    "tests/flaky/naive/",
+    "tests/triage-samples/"
+  ],
+  "excludeReason": {
+    "tests/flaky/naive/": "Flaky 재현용 개선 전 테스트. 고정 대기 등 나쁜 방식을 일부러 보여주는 파일이다.",
+    "tests/triage-samples/": "실패 원인 분류기 검증용으로 일부러 실패하게 만든 샘플이다."
+  },
+  "protected": ["guardrail/", "AGENTS.md", ".github/workflows/"]
+}

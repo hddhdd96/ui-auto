@@ -1,0 +1,6 @@
+diff --git a/tests/negative/datasets/api-instance.json b/tests/negative/datasets/api-instance.json
+--- a/tests/negative/datasets/api-instance.json
++++ b/tests/negative/datasets/api-instance.json
+@@ -300,1 +300,1 @@
+-        "status": 409,
++        "status": 202,

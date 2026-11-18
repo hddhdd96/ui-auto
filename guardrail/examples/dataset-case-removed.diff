@@ -1,0 +1,6 @@
+diff --git a/tests/negative/datasets/api-auth.json b/tests/negative/datasets/api-auth.json
+--- a/tests/negative/datasets/api-auth.json
++++ b/tests/negative/datasets/api-auth.json
+@@ -120,2 +120,0 @@
+-      "id": "NEG-PERM-004",
+-      "title": "일반 사용자가 속하지 않은 프로젝트를 조회하면 403 FORBIDDEN",

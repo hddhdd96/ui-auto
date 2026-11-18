@@ -1,0 +1,6 @@
+diff --git a/tests/api/instance.spec.ts b/tests/api/instance.spec.ts
+--- a/tests/api/instance.spec.ts
++++ b/tests/api/instance.spec.ts
+@@ -5,1 +5,1 @@
+-    // expect(old).toBe(1);
++    // 예전 확인 방식은 아래 폴링으로 대체했다.

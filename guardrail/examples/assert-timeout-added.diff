@@ -1,0 +1,6 @@
+diff --git a/tests/ui/instance.spec.ts b/tests/ui/instance.spec.ts
+--- a/tests/ui/instance.spec.ts
++++ b/tests/ui/instance.spec.ts
+@@ -14,1 +14,1 @@
+-    await expect(instances.status(name)).toHaveText('ACTIVE');
++    await expect(instances.status(name)).toHaveText('ACTIVE', { timeout: 30_000 });

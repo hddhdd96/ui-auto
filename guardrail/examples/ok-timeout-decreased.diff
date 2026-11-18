@@ -1,0 +1,6 @@
+diff --git a/src/config.ts b/src/config.ts
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -19,1 +19,1 @@
+-  pollTimeoutMs: 60_000,
++  pollTimeoutMs: 10_000,

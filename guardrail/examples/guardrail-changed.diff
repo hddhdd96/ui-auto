@@ -1,0 +1,6 @@
+diff --git a/guardrail/rules.ts b/guardrail/rules.ts
+--- a/guardrail/rules.ts
++++ b/guardrail/rules.ts
+@@ -10,1 +10,1 @@
+-const STRICT = true;
++const STRICT = false;
