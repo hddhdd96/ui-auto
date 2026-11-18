@@ -1,30 +1,127 @@
 # Mock 클라우드 포털 QA 자동화 포트폴리오
 
-작은 **Mock 클라우드 포털**(웹 콘솔 + REST API)을 직접 만들고, 그 위에 Playwright 기반 UI/API 테스트 자동화, 테스트 하네스(실행 → 증적 수집 → 결과서 자동 작성), GitHub Actions CI를 적용하는 저장소입니다.
+클라우드 플랫폼 QA에서 해 온 테스트 자동화 경험을, 면접에서 직접 실행해 보여줄 수 있도록 재현한 저장소입니다.
+작은 **Mock 클라우드 포털**(웹 콘솔 + REST API)을 직접 만들고, 그 위에 Playwright 기반 API·UI 테스트 자동화, 테스트 하네스(실행 → 증적 수집 → 실패 원인 분류 → 결과서 자동 작성), GitHub Actions CI와 판정 완화 가드레일을 적용했습니다.
 
-> 이 저장소의 포털, 리소스, TC ID, 계정은 모두 가상입니다. 실제 회사·제품 정보는 들어 있지 않습니다.
+> 이 저장소의 포털, 리소스, TC ID, 계정은 모두 가상입니다. 실제 회사·고객사·제품 정보는 들어 있지 않습니다.
+> 결함·Flaky 재현 시나리오는 실무에서 겪은 사례를 **같은 원인 구조로 만든 가상 시나리오**이며, 실무의 화면·데이터·코드를 옮긴 것이 아닙니다.
+> 이 문서의 수치는 이 저장소에서 실제로 실행한 결과만 썼습니다. 실무 수치는 '실무 성과' 열에만 따로 적었습니다.
 
-## 진행 상태
+## 한눈에 보기
 
-단계별로 개발하고 있습니다. 완료한 단계만 체크합니다.
+| 영역 | 내용 | 이 저장소에서 실행한 결과 |
+|---|---|---|
+| Mock 포털 | 인스턴스·볼륨·볼륨 그룹·네트워크·보안 그룹·쿼터·권한이 있는 REST API와 웹 콘솔. 요청은 접수만 하고 실제 작업은 지연 뒤에 끝난다 | 결함 주입 플래그 2개, Flaky 주입 플래그 5개 |
+| API 자동화 | 상태 폴링으로 '실제 작업 완료'를 판정하고, 남은 리소스를 의존 순서대로 일괄 삭제 | 16건 통과 |
+| UI E2E | Page Object Model, getByRole·getByLabel만 사용, 화면 결과를 API로 다시 확인 | 21건 통과 |
+| 네거티브 dataset | 경계값·필수값·형식·쿼터·권한 등을 JSON dataset으로 관리하고 결함 집중 영역(`risk: high`)을 따로 실행 | 65건 통과(그중 high 21건) |
+| 결함 재현 | 쿼터 초과 API 우회, 사양 변경 후 표시 사양 불일치 | 결함 모드에서 기대한 테스트만 정확히 실패 |
+| Flaky 재현·안정화 | 4가지 원인 유형을 naive(개선 전)와 stable(개선 후)로 비교 | 확률 50%·5회: naive 실패율 40~80%, stable 25회 모두 통과 |
+| 실패 원인 분류 | 규칙 기반 product / test / env 분류, AI 원인 추천은 선택 기능 | 정답 17건 중 16건 일치(94.1%) |
+| 테스트 하네스 | 환경·프로젝트를 API로 골라 실행하고 Excel·PPT 결과서까지 작성 | CI에서 111건 실행부터 결과서 작성까지 1분 26초 |
+| CI 가드레일 | 판정을 느슨하게 만드는 변경 9가지를 PR에서 차단 | 자기검증 25건 통과, 실제 완화 커밋 5건 탐지 |
 
-- [x] 0단계: 프로젝트 뼈대(TypeScript, ESLint, AI 작업 지침)
-- [x] 1단계: Mock 포털 REST API
-- [x] 2단계: 웹 콘솔 화면
-- [x] 3단계: REST API 자동화(상태 폴링, 남은 리소스 일괄 삭제)
-- [x] 4단계: Playwright UI E2E(Page Object Model)
-- [x] 5단계: 네거티브 dataset 테스트
-- [x] 6단계: 결함 주입과 결함 재현 테스트
-- [x] 7단계: Flaky 재현과 안정화(naive / stable 비교)
-- [x] 8단계: 실패 증적 수집과 실패 원인 자동 분류
-- [x] 9단계: 테스트 하네스와 Excel·PPT 결과서
-- [x] 10단계: CI 가드레일(판정 완화 변경 차단)
-- [x] 11단계: GitHub Actions 워크플로
-- [ ] 12단계: 시연 시나리오와 이력서 대응표 정리
+## 아키텍처
 
-## 지금 실행할 수 있는 것
+```mermaid
+flowchart LR
+  subgraph Portal["Mock 클라우드 포털 (Node + Express)"]
+    WEB["웹 콘솔<br/>(HTML + JS)"] --> API["REST API /api"]
+    API --> STORE[("인메모리 저장소<br/>상태 전이 타이머")]
+    INJ["결함 주입 · Flaky 주입<br/>(환경변수 플래그, 시드 고정)"] -.-> API
+  end
 
-Node.js 20 이상이 필요합니다.
+  subgraph Tests["Playwright Test (TypeScript)"]
+    APIT["API 테스트<br/>상태 폴링 · 일괄 삭제"]
+    UIT["UI E2E<br/>Page Object Model"]
+    NEG["네거티브 dataset"]
+    DEF["결함 재현"]
+    FLK["Flaky naive / stable"]
+  end
+
+  APIT -->|HTTP| API
+  NEG -->|HTTP| API
+  UIT -->|브라우저| WEB
+  DEF --> API
+  DEF --> WEB
+  FLK --> WEB
+
+  subgraph Harness["테스트 하네스"]
+    SEL["환경 · 프로젝트 선택<br/>(API 조회)"] --> RUN["테스트 실행"] --> EVD["증적 수집<br/>HTTP · 폴링 이력, 스크린샷"] --> TRI["실패 원인 분류<br/>product / test / env"] --> REP["Excel · PPT 결과서<br/>(Python)"]
+  end
+
+  RUN --> Tests
+
+  subgraph CI["GitHub Actions"]
+    CIW["ci.yml<br/>정적 검사 · 하네스 · 결함 모드 매트릭스"]
+    GRW["guardrail.yml<br/>판정 완화 검사"]
+    NTW["nightly.yml<br/>회귀 · Flaky 비교"]
+  end
+
+  CIW --> Harness
+  NTW --> Harness
+  GRW --> RULES["가드레일 규칙 9개"]
+  CIW --> PAGES["GitHub Pages<br/>HTML 리포트"]
+```
+
+## 이력서 항목과 이 저장소의 대응
+
+'실무 성과'는 이력서에 적은 수치이고, '이 저장소에서 재현한 내용'과 '실행 결과'는 이 저장소에서 같은 구조를 다시 만들어 실제로 실행한 결과입니다. 두 열의 수치는 서로 비교하는 값이 아닙니다. (팀)은 팀으로 함께 낸 성과입니다.
+
+| 이력서 항목 | 실무 성과(이력서 수치) | 이 저장소에서 재현한 내용 | 실행 결과(이 저장소) | 관련 코드 |
+|---|---|---|---|---|
+| API → UI 순서로 자동화 확장 | API 자동화 29건 구현, API로는 UI 결함을 잡지 못하는 한계를 확인해 Playwright UI E2E를 제안·도입하고 42건 직접 구현 | REST API 테스트를 먼저 만들고 UI E2E를 추가. 결함 모드에서 API 테스트가 놓치는 화면 결함을 UI 테스트가 잡는지 확인 | API 16건, UI 21건 통과. 표시 사양 불일치 결함은 API 테스트(`API-INST-002`)가 놓치고 UI 테스트(`UI-INST-002`)가 잡음 | `tests/api`, `tests/ui`, `src/pages` |
+| 테스트 하네스 구축 | (팀) 테스트 데이터 생성 → 실행 → 기대·실제 결과 비교 → 증적 캡처 → 결과서 생성·증적 삽입을 잇는 하네스로 제품별 회귀 1회 약 12시간 → 약 1시간. (팀) 자동화로 고객사 15곳 현장 검증, 투입 인원 2명 → 1명, 일정 제품당 3일 → 1일 | 한 명령으로 환경 선택 → 실행 → 증적 수집 → 실패 원인 분류 → Excel·PPT 결과서 작성 | CI에서 5개 스위트 111건 실행부터 결과서 작성까지 1분 26초. 자동화 전후 시간 비교는 하지 않음(수동 기준선이 없음) | `harness/run.ts` |
+| 결과서 증적 이미지 삽입 도구 | 수동 테스트 결과서용 Python 증적 이미지 삽입 도구로 1건당 약 15분 → 1분 이내 | Python(openpyxl, python-pptx)으로 스크린샷을 Excel '증적' 시트와 PPT 슬라이드에 자동 삽입 | 결함 모드 예시 결과서(`docs/samples`) 생성. 시간 비교는 하지 않음 | `harness/report/make_reports.py` |
+| 환경 정보 API 조회 | API로 환경 정보를 조회해 선택하게 바꿔 환경 설정 약 5분 → 30초 이내 | 하네스가 `GET /api/environments`, `GET /api/projects`로 대상을 골라 실행 | `proj-alpha`·`proj-beta` 양쪽에서 106건 통과. 시간 비교는 하지 않음 | `harness/run.ts` |
+| 판정 기준을 '실제 작업 완료'로 | 화면·API 응답·실제 시스템 상태·로그를 비교해 결함 원인 확인 | 2xx 응답이 아니라 상태 폴링으로 완료를 판정하고, 400이면 목록 API로 실제 상태를 재확인 | 삭제 응답 `successCount: 1` 시점에 실제 상태가 DELETING인 것을 확인(`API-VG-001`) | `src/api/actions.ts`, `src/api/poll.ts` |
+| 실무에서 겪은 결함 재현 | VM 사양 불일치 등 결함 원인 확인 | 쿼터 초과 API 우회(ERROR 인스턴스, 대시보드 집계 깨짐), 무중단 사양 변경 후 표시 사양 불일치를 결함 주입 플래그로 재현 | 결함 모드 2개에서 기대한 결함 재현 테스트만 정확히 실패, 정상 모드에서는 모두 통과 | `tests/defects`, `portal/server/config.ts` |
+| Flaky TC 안정화 | Flaky TC 18건(생성 10·삭제 8)을 원인 유형별로 고쳐 TC당 5회, 총 90회 모두 성공(성공률 40% → 100%, 실패율 약 60% → 0%) | 4가지 원인 유형(실제 상태 불일치, 응답 혼선, UI 반영 지연, 환경·네트워크 오류)을 Flaky 주입 플래그로 재현하고 naive·stable을 같은 조건에서 비교 | 5건 × naive·stable 각 5회: naive 실패율 40~80%, stable 25회 모두 통과. 데모 모드(확률 100%)는 naive 15회 모두 실패, stable 15회 모두 통과 | `tests/flaky`, `scripts/compare-flaky.ts` |
+| AI 판정 완화 방지 CI 규칙 | AI의 판정 완화를 막는 CI 규칙 12개를 제안·도입, 약 4개월간 재발 없음 | 판정 완화 규칙 9개와 승인 라벨 절차, AI 작업 지침(AGENTS.md) | 자기검증 25건 통과, 실제 판정 완화 커밋의 5가지 변경을 모두 탐지 | `guardrail/`, `AGENTS.md` |
+| 결함 집중 영역 기반 네거티브 시나리오 | 결함 집중 영역을 분석해 네거티브 시나리오 33건(IaaS 21·PaaS 12) 설계, 버전 패치마다 수동 수행(33건 모두 PASS) | 결함 집중 영역을 `risk: high`로 표시한 JSON dataset을 만들어 자동으로 반복 실행 | 65건(API 56·화면 9) 통과, high 21건만 따로 실행 가능 | `tests/negative` |
+| 환경 문제와 제품 결함 구분 | 현장 결함을 환경·설정 문제와 제품 결함으로 구분하고 재현 절차·로그 정리 | 실패 증적(HTTP·폴링 이력, 원인 로그, 주입 이력)을 읽어 product / test / env로 자동 분류 | 정답 17건 중 16건 일치(94.1%). AI 추천 정확도는 인증 정보가 없어 측정하지 않음 | `harness/triage` |
+| Canvas 콘솔 OCR 판정 | locator로 읽을 수 없는 Canvas 웹 콘솔은 OCR로 실제 출력값을 읽어 판정하는 기준 작성 | **재현하지 않음.** Mock 콘솔은 일반 HTML이라 locator로 읽을 수 있음 | - | - |
+
+## 5분 데모 순서
+
+면접에서 같은 결과를 매번 보여줄 수 있도록 Flaky 데모는 확률 100%, 시드 고정으로 실행합니다. 소요 시간은 개발 환경에서 이 명령들을 실제로 실행해 잰 값이며, 머신에 따라 달라질 수 있습니다.
+
+**시연 전 준비**: `npm ci`, `npx playwright install chromium`, `pip install -r harness/report/requirements.txt`를 미리 해 두고, 가드레일에 막힌 PR 화면을 브라우저 탭에 열어 둡니다.
+
+| 시간 | 보여줄 것 | 명령 | 소요 | 화면에서 확인할 것 |
+|---|---|---|---|---|
+| 0:00~0:30 | 저장소 목적과 구조 | README의 아키텍처 그림 | - | 포털 → 테스트 → 하네스 → CI 흐름 |
+| 0:30~1:00 | Mock 포털 콘솔 | `npm run portal` 후 `http://127.0.0.1:4173`(admin / admin-pass) | 즉시 | 인스턴스를 만들면 CREATING → ACTIVE로 바뀌는 화면 |
+| 1:00~1:45 | '요청 성공'이 아니라 '실제 작업 완료' 판정 | `npx playwright test --project=api --grep "API-VG-001\|API-INST-004"` | 약 7초 | 삭제 응답은 성공인데 실제로는 DELETING, 400이면 목록 API로 재확인 |
+| 1:45~2:30 | API로는 못 잡는 화면 결함 | `npm run defects:check -- resize-mismatch` | 약 13초 | 결함 모드에서 결함 재현 테스트가 결함을 검출(README의 '결함 모드에서 기존 테스트가 무엇을 잡았는가' 표와 함께 설명) |
+| 2:30~3:30 | Flaky 개선 전/후 | `npm run flaky:compare -- --demo --only FLAKY-RESP-001 --runs 1` | 약 13초 | 같은 플래그·같은 시드에서 naive는 앞 단계의 늦은 400을 오판해 실패, stable은 통과 |
+| 3:30~4:20 | 하네스와 결과서 | `DEFECT_RESIZE_MISMATCH=true npm run harness -- --suites defects --allow-fail` | 약 14초 | `artifacts/harness/<실행 ID>/test-report.pptx`의 실패 상세 슬라이드(분류, 근거, 스크린샷) |
+| 4:20~5:00 | 판정 완화 차단 | 미리 열어 둔 가드레일 PR 화면, 또는 `npm run guardrail -- --diff-file guardrail/examples/retries-increased.diff` | 약 1초 | retry 0 → 2 변경을 GR-04로 차단 |
+
+## 디렉터리 구조
+
+```text
+portal/server/        Mock 포털 REST API (Express, 인메모리 저장소, 결함·Flaky 주입)
+portal/web/           웹 콘솔 (빌드 없는 HTML + JS)
+src/api/              API 클라이언트, 상태 폴링, 완료 판정, 일괄 삭제, 증적 기록
+src/pages/            Page Object (locator와 action만)
+src/fixtures/         로그인(스위트당 1회), 리소스 정리, 포털 모드 확인
+src/negative/         네거티브 dataset 로더와 실행기
+src/flaky/            브라우저 응답 기록, 요청-응답 짝짓기, 화면 복구
+tests/api|ui/         정상 흐름 테스트
+tests/negative/       네거티브 dataset과 실행기
+tests/defects/        결함 재현 테스트와 결함 모드별 검출 기대 목록
+tests/flaky/          Flaky 개선 전(naive) · 개선 후(stable) 테스트
+harness/              테스트 하네스, 실패 원인 분류, 결과서 생성기(Python)
+guardrail/            판정 완화 규칙, 검사기, 자기검증 예시
+scripts/              결함 검출 확인, Flaky 비교, 분류 정확도 측정
+.github/              CI · 가드레일 · Nightly 워크플로
+AGENTS.md             AI 작업 지침(판정 완화 금지)
+```
+
+## 실행 방법
+
+Node.js 20 이상, Python 3.10 이상이 필요합니다.
 
 ```bash
 npm ci
