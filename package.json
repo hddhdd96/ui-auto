@@ -22,7 +22,8 @@
     "test:flaky": "playwright test --project=flaky-naive --project=flaky-stable",
     "flaky:compare": "tsx scripts/compare-flaky.ts",
     "triage": "tsx harness/triage/cli.ts",
-    "triage:eval": "tsx scripts/triage-eval.ts"
+    "triage:eval": "tsx scripts/triage-eval.ts",
+    "harness": "tsx harness/run.ts"
   },
   "dependencies": {
     "express": "^5.1.0"

@@ -23,7 +23,8 @@ export default defineConfig<TestOptions>({
   use: {
     baseURL,
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    // 하네스는 모든 UI 테스트의 마지막 화면을 증적으로 남긴다(HARNESS_SCREENSHOT=on).
+    screenshot: process.env.HARNESS_SCREENSHOT === 'on' ? 'on' : 'only-on-failure',
   },
   projects: [
     { name: 'api', testDir: './tests/api' },
