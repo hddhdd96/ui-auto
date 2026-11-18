@@ -17,7 +17,7 @@
 - [x] 6단계: 결함 주입과 결함 재현 테스트
 - [x] 7단계: Flaky 재현과 안정화(naive / stable 비교)
 - [x] 8단계: 실패 증적 수집과 실패 원인 자동 분류
-- [ ] 9단계: 테스트 하네스와 Excel·PPT 결과서
+- [x] 9단계: 테스트 하네스와 Excel·PPT 결과서
 - [ ] 10단계: CI 가드레일(판정 완화 변경 차단)
 - [ ] 11단계: GitHub Actions 워크플로
 - [ ] 12단계: 시연 시나리오와 이력서 대응표 정리
@@ -28,6 +28,7 @@ Node.js 20 이상이 필요합니다.
 
 ```bash
 npm ci
+pip install -r harness/report/requirements.txt
 npm run lint
 npm run typecheck
 npm run portal
@@ -47,6 +48,7 @@ npm run report
 | `npm run defects:check` | 결함 주입 모드마다 포털을 새로 띄워, 결함 재현 테스트가 결함을 정확히 검출하는지 확인한다 |
 | `npm run test:flaky` | Flaky 재현 테스트(개선 전 naive, 개선 후 stable)를 실행한다. Flaky 플래그를 켜지 않으면 둘 다 통과한다 |
 | `npm run flaky:compare` | 유형마다 naive와 stable을 같은 Flaky 플래그·같은 시드로 5회씩 실행해 실패율 표를 만든다(`-- --demo`: 확률 100%, 시드 고정) |
+| `npm run harness` | 테스트 하네스: 환경·프로젝트 선택 → 실행 → 증적 수집 → 실패 원인 분류 → Excel·PPT 결과서 작성 |
 | `npm run triage` | 마지막 테스트 결과(`artifacts/results.json`)의 실패를 product / test / env로 자동 분류해 결과서를 만든다 |
 | `npm run triage:eval` | 정답을 붙인 실패 시나리오를 실제로 실행해 분류 정확도를 계산한다 |
 | `npm run test:negative:high` | 네거티브 dataset 중 결함이 자주 나는 영역(`risk: high`)만 실행한다 |
@@ -512,3 +514,47 @@ Flaky 확률을 100%로, 시드를 7로 고정해 각 3회 실행합니다. naiv
 - **처음 측정에서는 17건 중 14건(82.4%)이었습니다.** 틀린 3건 중 2건(`DEF-QUOTA-002`, `DEF-RESIZE-001`)은 분류 규칙의 버그였습니다. Playwright는 locator로 값을 확인하는 모든 assertion의 호출 로그에 `waiting for getByRole(...)`을 남기는데, `TEST-LOCATOR` 규칙이 이 문구만 보고 "요소를 못 찾음"으로 판정했습니다. 실제로는 요소를 찾았고 값이 달랐습니다. 규칙을 "요소를 못 찾았다는 표시가 있고, 실제 받은 값이 없을 때"로 고친 뒤 다시 측정한 결과가 위 표입니다.
 - 규칙을 고칠 때 본 데이터와 정확도를 잰 데이터가 같습니다. 그래서 94.1%는 새로운 실패에 대한 독립 검증 수치가 아니라, 이 라벨 세트에서의 결과입니다.
 - `TRIAGE-SAMPLE-006`(API 규칙은 202인데 테스트가 201을 기대한 테스트 버그)은 일부러 넣은 한계 사례입니다. 증상만 보면 제품 결함과 똑같아서 규칙으로는 구분할 수 없고, 기대값이 요구사항과 맞는지 사람이 확인해야 합니다.
+
+## 테스트 하네스와 결과서 자동 작성
+
+테스트를 실행하고 끝나는 것이 아니라, **실행 → 증적 수집 → 실패 원인 분류 → 결과서 작성**까지 한 명령으로 이어지게 했습니다.
+
+```bash
+npm run harness                                               # 환경·프로젝트를 번호로 고른다(하나뿐이면 자동 선택)
+npm run harness -- --env local --project proj-beta --suites api,ui
+npm run harness -- --base-url http://127.0.0.1:4173           # 이미 떠 있는 포털을 대상으로 한다
+```
+
+### 하네스가 하는 일
+
+| 순서 | 하는 일 | 코드 |
+|---|---|---|
+| 1. 포털 준비 | 대상 포털이 떠 있지 않으면 직접 띄우고, 상태 확인 API가 응답할 때까지 기다린다 | `harness/run.ts` |
+| 2. 환경 선택 | 환경 목록(`GET /api/environments`)과 프로젝트 목록(`GET /api/projects`)을 API로 불러와 고른다. 옵션으로 정하거나, 터미널에서 번호로 고르거나, 하나뿐이면 자동으로 고른다. 포털 주소나 프로젝트 ID를 설정 파일에 직접 적지 않아도 된다 | `harness/run.ts` |
+| 3. 테스트 실행 | 고른 대상(`BASE_URL`, `PROJECT_ID`)으로 스위트를 실행한다. 모든 UI 테스트의 마지막 화면을 스크린샷 증적으로 남긴다 | `playwright.config.ts` |
+| 4. 증적 수집 | 테스트별 결과·소요 시간·오류와 스크린샷을 모으고, 스크린샷은 실행 디렉터리의 `evidence/`로 복사한다(`test-results/`는 다음 실행 때 지워지기 때문) | `harness/collect.ts` |
+| 5. 실패 원인 분류 | 실패마다 규칙 기반으로 product / test / env를 판정한다 | `harness/triage/` |
+| 6. 결과서 작성 | 실행 정보와 결과를 `report-data.json`으로 남기고, 이를 읽어 Excel·PPT 결과서를 만든다 | `harness/report/make_reports.py` |
+
+결과는 `artifacts/harness/<실행 ID>/`에 모입니다: `test-report.xlsx`, `test-report.pptx`, `report-data.json`, `results.json`, `html-report/`, `evidence/`.
+
+테스트가 프로젝트에 따라 달라지는 값(기본 네트워크, 다른 프로젝트의 리소스)은 하드코딩하지 않고 선택한 프로젝트에서 구합니다. 네거티브 dataset도 `{{project.network}}`, `{{other.sg}}` 같은 자리표시자를 씁니다. `proj-alpha`와 `proj-beta` 양쪽에서 API·UI·네거티브·결함 재현 테스트 106건이 모두 통과하는 것을 확인했습니다.
+
+### 결과서 구성
+
+| Excel 시트 | 내용 |
+|---|---|
+| 요약 | 대상 포털, 프로젝트, 계정, 포털 모드(결함·Flaky 주입 여부), 실행 시각, 코드 버전, 전체 통계(Not Run 포함), 스위트별 결과표와 차트, 실패 원인 분류 건수 |
+| 테스트 결과 | 전체 테스트 목록(TC ID, 이름, 스위트, 결과, 소요 시간, 실패 원인 분류, 오류 메시지). 결과별 색, 필터, 틀 고정 |
+| 실패 분석 | 실패마다 분류, 적용된 규칙, 신뢰도, 판정 근거, 증적 내용(기대값·실제값, 관련 요청, 폴링 이력) |
+| 증적 | 스크린샷. 실패한 테스트를 먼저 두고 나머지는 실행 순서대로 |
+
+PPT는 같은 내용을 표지 → 실행 환경과 결과 요약 → 스위트별 결과(차트) → 실패 원인 분류 → 실패 상세(한 건당 한 장, 판정 근거와 스크린샷) → 화면 증적(한 장에 4개) 순서로 담습니다. PPT의 화면 증적은 12장까지만 넣고, 나머지는 Excel '증적' 시트에 모두 들어갑니다.
+
+예시 결과서는 결함 주입 모드(`DEFECT_QUOTA_API_BYPASS`, `DEFECT_RESIZE_MISMATCH`)에서 UI·결함 재현 스위트를 실행해 만든 것입니다(25건 중 실패 5건). [PPT 예시](docs/samples/test-report-defect-mode.pptx), [Excel 예시](docs/samples/test-report-defect-mode.xlsx)
+
+![PPT 결과서 슬라이드 미리보기](docs/screenshots/report-ppt-slides.png)
+
+### 결과서를 Python으로 만든 이유
+
+테스트와 하네스는 TypeScript지만 결과서 생성만 Python(`openpyxl`, `python-pptx`)으로 작성했습니다. 두 라이브러리는 표, 차트, 이미지 삽입, 셀 병합, 인쇄 설정을 모두 지원하고 오래 쓰여 안정적이라서, 스크린샷 증적과 차트가 들어간 결과서를 Node 라이브러리보다 적은 코드로 만들 수 있습니다. 하네스와는 `report-data.json` 한 파일로만 연결되므로, 결과서 형식을 바꿔도 테스트 코드는 건드리지 않습니다.
