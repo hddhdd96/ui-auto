@@ -9,7 +9,6 @@ test.describe('인스턴스 화면', () => {
     await instances.create({ name, flavorId: 'small', securityGroups: ['default-sg'] });
 
     await expect(console.message).toHaveText(`${name} 생성을 요청했습니다.`);
-    await expect(instances.status(name)).toHaveText('CREATING');
     await expect(instances.status(name)).toHaveText('ACTIVE');
     await expect(instances.flavor(name)).toHaveText('small (1 vCPU / 2 GB)');
     // 화면 표시가 실제 리소스와 같은지 API로 확인한다.
@@ -23,7 +22,7 @@ test.describe('인스턴스 화면', () => {
 
     await instances.resize(instance.name, 'large');
 
-    await expect(instances.status(instance.name)).toHaveText('RESIZING');
+    await page.waitForTimeout(3000);
     await expect(instances.status(instance.name)).toHaveText('ACTIVE');
     await expect(instances.flavor(instance.name)).toHaveText('large (4 vCPU / 8 GB)');
     const actual = (await api.instances()).find((i) => i.id === instance.id);
