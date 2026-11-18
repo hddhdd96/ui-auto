@@ -1,0 +1,14 @@
+{
+  "description": "결함 주입 모드별로 결함을 검출해야 하는(=실패해야 하는) 결함 재현 테스트. 정상 모드에서는 모두 통과해야 한다.",
+  "modes": {
+    "normal": { "env": {}, "mustFail": [] },
+    "quota-api-bypass": {
+      "env": { "DEFECT_QUOTA_API_BYPASS": "true" },
+      "mustFail": ["DEF-QUOTA-001", "DEF-QUOTA-002"]
+    },
+    "resize-mismatch": {
+      "env": { "DEFECT_RESIZE_MISMATCH": "true" },
+      "mustFail": ["DEF-RESIZE-001", "DEF-RESIZE-002"]
+    }
+  }
+}

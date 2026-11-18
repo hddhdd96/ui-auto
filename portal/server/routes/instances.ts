@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { requireAuth } from '../auth.ts';
+import { config } from '../config.ts';
 import { badRequest, conflict } from '../errors.ts';
 import { later } from '../lifecycle.ts';
 import { db, nextId } from '../store.ts';
 import type { Instance } from '../types.ts';
-import { assertQuota, flavorOf } from '../usage.ts';
+import { assertQuota, exceededQuota, flavorOf } from '../usage.ts';
 import { requireName, requireString } from '../validation.ts';
 import { bodyOf, deleteAccepted, findInProject, listInProject, newBase } from './helpers.ts';
 
@@ -44,15 +45,24 @@ instanceRouter.post('/instances', (req, res) => {
   if (listInProject(req, db.instances).some((i) => i.name === name)) {
     throw conflict('DUPLICATE_NAME', '같은 이름의 인스턴스가 이미 있습니다.');
   }
-  assertQuota(base.projectId, { instances: 1, vcpus: flavor.vcpus, ramGb: flavor.ramGb });
+  const exceeded = exceededQuota(base.projectId, { instances: 1, vcpus: flavor.vcpus, ramGb: flavor.ramGb });
+  if (exceeded.length > 0 && !config.defects.quotaApiBypass) {
+    throw conflict('QUOTA_EXCEEDED', `쿼터를 초과했습니다: ${exceeded.join(', ')}`);
+  }
+  // [결함 주입: DEFECT_QUOTA_API_BYPASS] 쿼터 검사를 화면에만 두고 API에서는 빠뜨린 상황을 재현한다.
+  // 요청은 202로 접수되고, 실제 생성 단계에서 자원을 확보하지 못해 ERROR가 된다.
+  const bypassed = exceeded.length > 0;
 
   const instance: Instance = {
-    ...base, status: 'CREATING', flavorId: flavor.id, networkId, securityGroupIds, fault: null,
+    ...base, status: 'CREATING', flavorId: flavor.id, flavorName: flavor.name, networkId, securityGroupIds, fault: null,
   };
   db.instances.set(instance.id, instance);
   later(() => {
-    // 서브넷이 없는 네트워크에서는 IP를 할당할 수 없어 ERROR로 끝난다.
-    if (network.subnets.length === 0) {
+    if (bypassed) {
+      instance.status = 'ERROR';
+      instance.fault = `자원 확보 실패: 프로젝트 쿼터를 초과했습니다(${exceeded.join(', ')}).`;
+    } else if (network.subnets.length === 0) {
+      // 서브넷이 없는 네트워크에서는 IP를 할당할 수 없어 ERROR로 끝난다.
       instance.status = 'ERROR';
       instance.fault = 'IP 할당 실패: 네트워크에 서브넷이 없습니다.';
     } else {
@@ -80,6 +90,8 @@ instanceRouter.post('/instances/:id/resize', (req, res) => {
   instance.status = 'RESIZING';
   later(() => {
     instance.flavorId = next.id;
+    // [결함 주입: DEFECT_RESIZE_MISMATCH] 실제 사양은 바뀌었는데 화면에 표시하는 사양 이름은 갱신하지 않는다.
+    if (!config.defects.resizeMismatch) instance.flavorName = next.name;
     instance.status = 'ACTIVE';
   });
   res.status(202).json(instance);

@@ -18,6 +18,8 @@ interface TestFixtures {
 }
 
 interface WorkerFixtures {
+  /** 테스트가 기대한 포털 모드(결함 주입 플래그)와 실제로 떠 있는 포털의 모드가 같은지 확인한다. */
+  portalMode: void;
   apiContext: APIRequestContext;
   /** 스위트(워커)당 한 번만 로그인하고 모든 테스트가 같은 세션을 쓴다. */
   adminSession: Session;
@@ -26,7 +28,32 @@ interface WorkerFixtures {
 
 let sequence = 0;
 
+const isOn = (name: string) => ['true', '1'].includes((process.env[name] ?? '').toLowerCase());
+
+/** 이 테스트 실행이 기대하는 결함 주입 모드. 포털의 config.defects와 같은 형식이다. */
+export function expectedDefects() {
+  return {
+    quotaApiBypass: isOn('DEFECT_QUOTA_API_BYPASS'),
+    resizeMismatch: isOn('DEFECT_RESIZE_MISMATCH'),
+  };
+}
+
 export const test = base.extend<TestFixtures, WorkerFixtures>({
+  portalMode: [async ({ playwright }, use, workerInfo) => {
+    const context = await playwright.request.newContext({ baseURL: workerInfo.project.use.baseURL });
+    const actual = (await (await context.get('/api/test/flags')).json()) as { defects: Record<string, boolean> };
+    await context.dispose();
+    const expected = expectedDefects();
+    // 이미 떠 있는 다른 모드의 포털을 재사용하면 결과를 믿을 수 없으므로, 테스트를 시작하기 전에 멈춘다.
+    if (JSON.stringify(actual.defects) !== JSON.stringify(expected)) {
+      throw new Error(
+        `테스트가 기대한 결함 주입 모드와 실제 포털의 모드가 다릅니다. 기대: ${JSON.stringify(expected)}, 실제: ${JSON.stringify(actual.defects)}. ` +
+        '다른 모드로 떠 있는 포털을 재사용했을 수 있습니다. 포털을 종료하거나 PORTAL_PORT를 바꿔 다시 실행하세요.',
+      );
+    }
+    await use();
+  }, { scope: 'worker', auto: true }],
+
   apiContext: [async ({ playwright }, use, workerInfo) => {
     const context = await playwright.request.newContext({ baseURL: workerInfo.project.use.baseURL });
     await use(context);

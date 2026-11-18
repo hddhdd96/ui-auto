@@ -46,6 +46,8 @@ interface Base {
 export interface Instance extends Base {
   status: InstanceStatus;
   flavorId: string;
+  /** 포털 화면에 표시하는 사양 이름. 사양을 바꾸면 함께 갱신돼야 한다. */
+  flavorName: string;
   networkId: string;
   securityGroupIds: string[];
   /** ERROR 상태일 때 원인 */

@@ -16,7 +16,9 @@
     "report": "playwright show-report",
     "test:ui": "playwright test --project=ui",
     "test:negative": "playwright test --project=negative",
-    "test:negative:high": "playwright test --project=negative --grep @risk-high"
+    "test:negative:high": "playwright test --project=negative --grep @risk-high",
+    "test:defects": "playwright test --project=defects",
+    "defects:check": "tsx scripts/check-defect-detection.ts"
   },
   "dependencies": {
     "express": "^5.1.0"

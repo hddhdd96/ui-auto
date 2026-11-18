@@ -226,7 +226,6 @@ async function dashboardView(view) {
 
 async function instancesView(view) {
   const [networks, securityGroups] = await Promise.all([api('GET', '/networks'), api('GET', '/security-groups')]);
-  const flavorName = (id) => state.flavors.find((f) => f.id === id)?.name ?? id;
 
   const name = h('input', { name: 'name' });
   const flavor = select(state.flavors.map((f) => ({ value: f.id, label: f.name })));
@@ -236,7 +235,7 @@ async function instancesView(view) {
   const table = createTable('인스턴스 목록', [
     { header: '이름', cell: (r) => r.name },
     { header: '상태', cell: (r) => [statusBadge(r.status), r.fault ? h('div', {}, r.fault) : null] },
-    { header: '사양', cell: (r) => flavorName(r.flavorId) },
+    { header: '사양', cell: (r) => r.flavorName },
     { header: '네트워크', cell: (r, ctx) => ctx.networks[r.networkId] ?? r.networkId },
     { header: '연결된 볼륨', cell: (r, ctx) => ctx.volumes.filter((v) => v.attachedInstanceId === r.id).map((v) => v.name).join(', ') || '-' },
     {

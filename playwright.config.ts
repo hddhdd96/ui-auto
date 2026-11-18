@@ -28,6 +28,7 @@ export default defineConfig({
     { name: 'api', testDir: './tests/api' },
     { name: 'ui', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },
     { name: 'negative', testDir: './tests/negative', use: { ...devices['Desktop Chrome'] } },
+    { name: 'defects', testDir: './tests/defects', use: { ...devices['Desktop Chrome'] } },
   ],
   // BASE_URL을 직접 주면 이미 떠 있는 포털을 대상으로 하고, 아니면 로컬 포털을 띄운다.
   webServer: process.env.BASE_URL ? undefined : {
@@ -37,6 +38,8 @@ export default defineConfig({
     env: {
       PORTAL_PORT: port,
       TRANSITION_DELAY_MS: process.env.TRANSITION_DELAY_MS ?? '300',
+      DEFECT_QUOTA_API_BYPASS: process.env.DEFECT_QUOTA_API_BYPASS ?? 'false',
+      DEFECT_RESIZE_MISMATCH: process.env.DEFECT_RESIZE_MISMATCH ?? 'false',
     },
   },
 });
