@@ -10,9 +10,20 @@ export const RETRY_AFTER_HEADER = 'x-portal-retry-ms';
 /** 콘솔이 재전송한 요청에 붙이는 헤더 */
 export const RETRY_MARK_HEADER = 'x-portal-retry';
 
+/**
+ * 시드를 섞는다(murmur3 finalizer). 1001, 1002처럼 연속된 시드를 그대로 쓰면
+ * 첫 난수들이 서로 비슷하게 나와 회차마다 확률이 독립적으로 동작하지 않는다.
+ */
+function mixSeed(seed: number): number {
+  let h = seed >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 /** mulberry32: 작고 빠른 시드 고정 난수 생성기 */
 function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
+  let a = mixSeed(seed);
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
     let t = a;
