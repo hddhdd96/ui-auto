@@ -6,6 +6,11 @@ import type { Session } from '../api/client';
 import { Evidence } from '../api/evidence';
 import { testConfig } from '../config';
 
+export interface TestOptions {
+  /** API 클라이언트가 조회 요청을 네트워크 오류 후 다시 보낼 횟수. 프로젝트 설정에서 바꾼다(flaky-stable은 3). */
+  networkRetries: number;
+}
+
 interface TestFixtures {
   /** 테스트 한 건의 HTTP 응답 이력과 상태 폴링 이력 */
   evidence: Evidence;
@@ -13,7 +18,7 @@ interface TestFixtures {
   api: ApiClient;
   /** 일반 사용자 권한 API 클라이언트 */
   memberApi: ApiClient;
-  /** 접두어가 붙은 고유한 리소스 이름을 만든다. 예: qa-web-3 */
+  /** 접두어가 붙은 고유한 리소스 이름을 만든다. 예: qa-web-k3f93 */
   uniqueName: (label: string) => string;
 }
 
@@ -27,6 +32,11 @@ interface WorkerFixtures {
 }
 
 let sequence = 0;
+/**
+ * 워커 프로세스마다 다른 짧은 태그. 테스트가 실패하면 Playwright가 워커를 새로 띄우면서 sequence가 0으로 돌아가므로,
+ * 태그 없이 번호만 쓰면 앞 테스트가 남긴 리소스와 이름이 겹칠 수 있다.
+ */
+const workerTag = Math.random().toString(36).slice(2, 6);
 
 const isOn = (name: string) => ['true', '1'].includes((process.env[name] ?? '').toLowerCase());
 
@@ -40,11 +50,16 @@ export function expectedPortalMode() {
     flaky: {
       deleteLag: isOn('FLAKY_DELETE_LAG'),
       lateResponse: isOn('FLAKY_LATE_RESPONSE'),
+      uiStale: isOn('FLAKY_UI_STALE'),
+      network: isOn('FLAKY_NETWORK'),
+      tokenRotate: isOn('FLAKY_TOKEN_ROTATE'),
     },
   };
 }
 
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<TestOptions & TestFixtures, WorkerFixtures>({
+  networkRetries: [0, { option: true }],
+
   portalMode: [async ({ playwright }, use, workerInfo) => {
     const context = await playwright.request.newContext({ baseURL: workerInfo.project.use.baseURL });
     const flags = (await (await context.get('/api/test/flags')).json()) as {
@@ -89,27 +104,30 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const evidence = new Evidence();
     await use(evidence);
     // 실패한 테스트에는 판단 근거가 되는 이력을 붙인다.
+    if (evidence.causes.length > 0) {
+      await testInfo.attach('cause-log.json', { body: JSON.stringify(evidence.causes, null, 2), contentType: 'application/json' });
+    }
     if (testInfo.status !== testInfo.expectedStatus) {
       await testInfo.attach('http-history.json', { body: JSON.stringify(evidence.http, null, 2), contentType: 'application/json' });
       await testInfo.attach('poll-history.json', { body: JSON.stringify(evidence.polls, null, 2), contentType: 'application/json' });
     }
   },
 
-  api: async ({ apiContext, adminSession, evidence }, use) => {
-    const client = new ApiClient(apiContext, adminSession, evidence);
+  api: async ({ apiContext, adminSession, evidence, networkRetries }, use) => {
+    const client = new ApiClient(apiContext, adminSession, evidence, { networkRetries });
     await use(client);
     const report = await cleanupLeftovers(client);
     expect(report.failed, '테스트 후 남은 리소스 일괄 삭제에 실패한 항목').toEqual([]);
   },
 
-  memberApi: async ({ apiContext, memberSession, evidence }, use) => {
-    await use(new ApiClient(apiContext, memberSession, evidence));
+  memberApi: async ({ apiContext, memberSession, evidence, networkRetries }, use) => {
+    await use(new ApiClient(apiContext, memberSession, evidence, { networkRetries }));
   },
 
   uniqueName: async ({}, use) => {
     await use((label) => {
       sequence += 1;
-      return `${testConfig.resourcePrefix}${label}-${sequence}`;
+      return `${testConfig.resourcePrefix}${label}-${workerTag}${sequence}`;
     });
   },
 });

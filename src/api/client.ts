@@ -29,6 +29,20 @@ export interface Session {
 export const newSession = (credentials: Credentials, projectId: string): Session =>
   ({ credentials, projectId, token: null, loginCount: 0 });
 
+/** 응답을 받지 못한 네트워크 오류인지(제품 응답이 아니라 환경 요인인지) 판단한다. */
+export function isNetworkError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /socket hang up|ECONNRESET|ECONNREFUSED|ERR_EMPTY_RESPONSE|ERR_NETWORK_CHANGED|ERR_CONNECTION|Failed to fetch/i.test(message);
+}
+
+export interface ApiClientOptions {
+  /**
+   * 조회(GET) 요청이 네트워크 오류로 끝났을 때 다시 보낼 횟수. 기본 0(다시 보내지 않음).
+   * 조회는 여러 번 보내도 결과가 같으므로 재시도해도 판정이 바뀌지 않는다. 생성·변경·삭제는 재시도하지 않는다.
+   */
+  networkRetries?: number;
+}
+
 /**
  * Mock 포털 REST API 클라이언트.
  * 모든 요청과 응답을 증적에 남기고, 토큰이 무효가 되면 한 번 다시 로그인해서 요청을 이어간다.
@@ -38,6 +52,7 @@ export class ApiClient {
     private readonly http: APIRequestContext,
     readonly session: Session,
     readonly evidence: Evidence = new Evidence(),
+    private readonly options: ApiClientOptions = {},
   ) {}
 
   async login(): Promise<void> {
@@ -72,13 +87,34 @@ export class ApiClient {
     const headers: Record<string, string> = { 'x-project-id': this.session.projectId };
     if (withAuth && this.session.token) headers.authorization = `Bearer ${this.session.token}`;
     const startedAt = Date.now();
-    const response = await this.http.fetch(`/api${path}`, { method, headers, data: body ?? undefined });
+    const response = await this.fetchWithNetworkRetry(method, path, headers, body);
     const parsed = (await response.json().catch(() => null)) as { error?: ApiResult['error'] } | null;
     const status = response.status();
     this.evidence.recordHttp({
       method, path, status, errorCode: parsed?.error?.code, elapsedMs: Date.now() - startedAt,
     });
     return { request: { method, path }, status, ok: response.ok(), body: parsed as T, error: parsed?.error };
+  }
+
+  private async fetchWithNetworkRetry(method: string, path: string, headers: Record<string, string>, body: unknown) {
+    const retries = method === 'GET' ? (this.options.networkRetries ?? 0) : 0;
+    for (let attempt = 0; ; attempt += 1) {
+      const startedAt = Date.now();
+      try {
+        return await this.http.fetch(`/api${path}`, { method, headers, data: body ?? undefined });
+      } catch (error) {
+        if (!isNetworkError(error)) throw error;
+        this.evidence.recordHttp({ method, path, status: 0, errorCode: 'NETWORK_ERROR', elapsedMs: Date.now() - startedAt });
+        // 재시도를 쓰지 않는 클라이언트(개선 전 방식)는 원인을 분류하지 않고 오류를 그대로 던진다.
+        if (retries === 0) throw error;
+        const recovered = attempt < retries;
+        this.evidence.recordCause('env', `${method} ${path} 네트워크 오류(${(error as Error).message.split('\n')[0]})${recovered ? ', 다시 보냄' : ''}`, recovered);
+        if (!recovered) {
+          throw new Error(`[env] ${method} ${path} 요청이 네트워크 오류로 ${attempt + 1}회 실패했습니다. 제품 응답이 아니라 환경 요인입니다.`, { cause: error });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
   }
 
   // ---------- 환경 조회 ----------

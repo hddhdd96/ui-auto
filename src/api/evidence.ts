@@ -21,9 +21,26 @@ export interface PollRecord {
   observed: string;
 }
 
+/**
+ * 원인별 로그. 테스트가 실행 중에 만난 문제를 원인 분류와 함께 남긴다.
+ * env: 네트워크 끊김, 토큰 교체처럼 제품 결함이 아닌 환경 요인 / product: 제품 동작이 기대와 다름 / test: 테스트 코드 문제
+ */
+export interface CauseRecord {
+  at: string;
+  cause: 'env' | 'product' | 'test';
+  detail: string;
+  /** 테스트가 스스로 회복했는지 */
+  recovered: boolean;
+}
+
 export class Evidence {
   readonly http: HttpRecord[] = [];
   readonly polls: PollRecord[] = [];
+  readonly causes: CauseRecord[] = [];
+
+  recordCause(cause: CauseRecord['cause'], detail: string, recovered: boolean): void {
+    this.causes.push({ at: new Date().toISOString(), cause, detail, recovered });
+  }
 
   recordHttp(record: Omit<HttpRecord, 'at'>): void {
     this.http.push({ at: new Date().toISOString(), ...record });

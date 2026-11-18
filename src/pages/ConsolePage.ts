@@ -43,9 +43,14 @@ export class ConsolePage {
    * 새 화면의 제목이 나타난 뒤에 조작을 시작한다.
    */
   private async open<T extends Screen>(screen: T): Promise<T> {
-    await this.menu.getByRole('link', { name: screen.title, exact: true }).click();
-    await screen.heading.waitFor();
+    await this.clickMenu(screen.title);
+    await screen.heading.waitFor({ timeout: 10_000 });
     return screen;
+  }
+
+  /** 메뉴만 누른다. 화면이 열렸는지는 확인하지 않는다(복구 로직에서 직접 확인할 때 쓴다). */
+  async clickMenu(title: string): Promise<void> {
+    await this.menu.getByRole('link', { name: title, exact: true }).click();
   }
 
   openDashboard = () => this.open(new DashboardPage(this.page));

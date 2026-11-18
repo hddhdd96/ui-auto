@@ -1,9 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+import type { TestOptions } from './src/fixtures/api';
 
 const port = process.env.PORTAL_PORT ?? '4173';
 const baseURL = process.env.BASE_URL ?? `http://127.0.0.1:${port}`;
 
-export default defineConfig({
+export default defineConfig<TestOptions>({
   testDir: './tests',
   outputDir: './test-results',
   // 포털은 메모리에 상태를 하나만 갖고 프로젝트 쿼터를 공유하므로 테스트를 순서대로 실행한다.
@@ -31,7 +32,8 @@ export default defineConfig({
     { name: 'defects', testDir: './tests/defects', use: { ...devices['Desktop Chrome'] } },
     // Flaky 재현: 같은 Flaky 플래그에서 개선 전(naive)은 간헐적으로 실패하고 개선 후(stable)는 통과해야 한다.
     { name: 'flaky-naive', testDir: './tests/flaky/naive', use: { ...devices['Desktop Chrome'] } },
-    { name: 'flaky-stable', testDir: './tests/flaky/stable', use: { ...devices['Desktop Chrome'] } },
+    // stable은 조회 요청이 네트워크 오류로 끝나면 3번까지 다시 보낸다(환경 요인으로 기록).
+    { name: 'flaky-stable', testDir: './tests/flaky/stable', use: { ...devices['Desktop Chrome'], networkRetries: 3 } },
   ],
   // BASE_URL을 직접 주면 이미 떠 있는 포털을 대상으로 하고, 아니면 로컬 포털을 띄운다.
   webServer: process.env.BASE_URL ? undefined : {
