@@ -33,6 +33,15 @@ export function recordBrowserResponses(page: Page, evidence: Evidence): Observed
       method: entry.method, path: entry.path, status: entry.status, elapsedMs: 0, source: 'browser', retry: entry.retry,
     });
   });
+  // 응답을 받지 못한 요청(연결 끊김 등)도 status 0, NETWORK_ERROR로 남긴다.
+  page.on('requestfailed', (request) => {
+    const url = new URL(request.url());
+    if (!url.pathname.startsWith('/api/')) return;
+    evidence.recordHttp({
+      method: request.method(), path: url.pathname.replace(/^\/api/, ''), status: 0,
+      errorCode: `NETWORK_ERROR ${request.failure()?.errorText ?? ''}`.trim(), elapsedMs: 0, source: 'browser',
+    });
+  });
   return observed;
 }
 
