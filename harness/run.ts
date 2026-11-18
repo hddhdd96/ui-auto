@@ -11,12 +11,12 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { testConfig } from '../src/config';
 import { collectTests } from './collect';
-import { triage } from './triage/cli';
+import { renderMarkdown, triage } from './triage/cli';
 
 interface Environment { id: string; name: string; baseUrl: string; description?: string }
 interface Project { id: string; name: string }
@@ -127,7 +127,7 @@ async function main() {
 
     // 3. 증적 수집과 실패 원인 분류
     const tests = collectTests(jsonFile, runDir);
-    const { rows: triaged } = await triage(jsonFile, root);
+    const { rows: triaged, summary: triageSummary } = await triage(jsonFile, root);
     const count = (status: string) => tests.filter((t) => t.status === status).length;
     const executed = tests.length - count('notrun');
     const reportData = {
@@ -169,6 +169,25 @@ async function main() {
     writeFileSync(path.join(root, 'artifacts', 'harness', 'latest.txt'), `${runId}\n`);
 
     const s = reportData.summary;
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      // GitHub Actions Job Summary: 실행 대상, 결과 요약, 스위트별 결과, 실패 원인 분류
+      const summaryLines = [
+        '## 테스트 하네스 실행 결과',
+        '',
+        `대상 포털: ${environment.name} (${environment.baseUrl}) · 프로젝트: ${project.name} (${project.id})`,
+        '',
+        `전체 ${s.total} · 통과 ${s.passed} · 실패 ${s.failed} · 재시도 후 통과 ${s.flaky} · 실행 안 됨 ${s.notRun} · 통과율 ${s.passRate}%`,
+        '',
+        '| 스위트 | 전체 | 통과 | 실패 | 실행 안 됨 |',
+        '|---|---|---|---|---|',
+        ...reportData.bySuite.map((b) => `| ${b.suite} | ${b.total} | ${b.passed} | ${b.failed} | ${b.notRun} |`),
+        '',
+        'HTML 리포트와 Excel·PPT 결과서는 이 실행의 artifact에 있습니다.',
+        '',
+        ...(s.failed > 0 ? [renderMarkdown(triaged, triageSummary)] : []),
+      ];
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summaryLines.join('\n')}\n`);
+    }
     console.log(`\n결과: 전체 ${s.total} · 통과 ${s.passed} · 실패 ${s.failed} · flaky ${s.flaky} · Not Run ${s.notRun} (통과율 ${s.passRate}%)`);
     console.log(`결과 디렉터리: ${path.relative(root, runDir)}`);
     if (run.status !== 0 && !flag('allow-fail')) process.exitCode = run.status ?? 1;

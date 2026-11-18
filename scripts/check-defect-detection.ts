@@ -9,7 +9,7 @@
  *        npm run defects:check -- normal   (특정 모드만)
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 interface Mode { env: Record<string, string>; mustFail: string[] }
@@ -68,6 +68,9 @@ const lines = [
 ];
 const summary = lines.join('\n');
 writeFileSync(path.join(outDir, 'summary.md'), `${summary}\n`);
+if (process.env.GITHUB_STEP_SUMMARY) {
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## 결함 검출 확인\n\n결함 주입 모드에서 결함 재현 테스트가 기대한 결함을 정확히 검출했는지(=기대한 테스트만 실패했는지) 확인한 결과입니다.\n\n${summary}\n`);
+}
 console.log(`\n${summary}`);
 
 if (rows.some((r) => !r.ok)) {

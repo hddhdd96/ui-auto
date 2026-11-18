@@ -13,7 +13,7 @@
  *       naive가 한 번도 실패하지 않으면 재현이 안 된 것이므로 경고를 남긴다(종료 코드는 0).
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 interface FlakyType { type: string; tcId: string; env: Record<string, string> }
@@ -107,6 +107,9 @@ const table = [
 ].join('\n');
 const condition = `조건: 회차 ${runs}회, Flaky 확률 ${rate}, 시드 ${demo ? `${baseSeed} 고정` : `${baseSeed + 1}~${baseSeed + runs}`}, 실행일 ${new Date().toISOString().slice(0, 10)}`;
 writeFileSync(path.join(outDir, 'summary.md'), `${condition}\n\n${table}\n`);
+if (process.env.GITHUB_STEP_SUMMARY) {
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Flaky 개선 전/후 비교\n\n${condition}\n\n${table}\n`);
+}
 writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify({ runs, rate, baseSeed, demo, rows, records }, null, 2));
 console.log(`\n${condition}\n\n${table}\n`);
 
