@@ -31,7 +31,6 @@
     "express": "^5.1.0"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^1.10.0",
     "@eslint/js": "^9.30.0",
     "@playwright/test": "1.63.0",
     "@types/express": "^5.0.3",
@@ -39,7 +38,6 @@
     "eslint": "^9.30.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.35.0",
-    "zod": "^4.6.7"
+    "typescript-eslint": "^8.35.0"
   }
 }
