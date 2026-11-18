@@ -1,0 +1,5 @@
+diff --git a/tests/ui/volume.spec.ts b/tests/ui/volume.spec.ts
+--- a/tests/ui/volume.spec.ts
++++ b/tests/ui/volume.spec.ts
+@@ -6,0 +6,1 @@
++  test.setTimeout(120_000);

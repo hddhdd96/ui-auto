@@ -1,0 +1,6 @@
+diff --git a/playwright.config.ts b/playwright.config.ts
+--- a/playwright.config.ts
++++ b/playwright.config.ts
+@@ -40,1 +40,1 @@
+-    { name: 'flaky-stable', use: { networkRetries: 3 } },
++    { name: 'flaky-stable', use: { networkRetries: 10 } },

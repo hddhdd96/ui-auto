@@ -1,0 +1,6 @@
+diff --git a/tests/api/volume.spec.ts b/tests/api/volume.spec.ts
+--- a/tests/api/volume.spec.ts
++++ b/tests/api/volume.spec.ts
+@@ -12,1 +12,1 @@
+-    expect(created.status).toBe(202);
++    expect.soft(created.status).toBe(202);

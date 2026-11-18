@@ -1,0 +1,6 @@
+diff --git a/tests/ui/network.spec.ts b/tests/ui/network.spec.ts
+--- a/tests/ui/network.spec.ts
++++ b/tests/ui/network.spec.ts
+@@ -5,1 +5,1 @@
+-  test('UI-NET-001 네트워크를 만든다', async () => {
++  test.skip('UI-NET-001 네트워크를 만든다', async () => {

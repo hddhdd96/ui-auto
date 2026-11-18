@@ -1,0 +1,6 @@
+diff --git a/tests/api/instance.spec.ts b/tests/api/instance.spec.ts
+--- a/tests/api/instance.spec.ts
++++ b/tests/api/instance.spec.ts
+@@ -30,2 +30,0 @@
+-    expect(resized).toMatchObject({ flavorId: 'medium' });
+-    expect(usage.usage).toMatchObject({ instances: 1, vcpus: 2, ramGb: 4 });

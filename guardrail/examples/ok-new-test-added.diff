@@ -1,0 +1,8 @@
+diff --git a/tests/api/volume.spec.ts b/tests/api/volume.spec.ts
+--- a/tests/api/volume.spec.ts
++++ b/tests/api/volume.spec.ts
+@@ -60,0 +60,4 @@
++  test('API-VOL-003 볼륨 크기를 확인한다', async ({ api }) => {
++    const volume = await createVolumeAndWait(api, { name: 'qa-v', sizeGb: 5 });
++    expect(volume.sizeGb).toBe(5);
++  });

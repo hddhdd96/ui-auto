@@ -1,0 +1,5 @@
+diff --git a/AGENTS.md b/AGENTS.md
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -5,1 +5,0 @@
+-| retry 증가 | `retries` 값을 올린다 |

@@ -27,6 +27,8 @@ export default defineConfig<TestOptions>({
     screenshot: process.env.HARNESS_SCREENSHOT === 'on' ? 'on' : 'only-on-failure',
   },
   projects: [
+    // 가드레일 자기검증(브라우저·포털을 쓰지 않는 단위 테스트)
+    { name: 'guardrail', testDir: './guardrail/tests' },
     { name: 'api', testDir: './tests/api' },
     { name: 'ui', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },
     { name: 'negative', testDir: './tests/negative', use: { ...devices['Desktop Chrome'] } },

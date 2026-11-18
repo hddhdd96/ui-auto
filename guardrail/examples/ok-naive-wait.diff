@@ -1,0 +1,5 @@
+diff --git a/tests/flaky/naive/ui-stale.spec.ts b/tests/flaky/naive/ui-stale.spec.ts
+--- a/tests/flaky/naive/ui-stale.spec.ts
++++ b/tests/flaky/naive/ui-stale.spec.ts
+@@ -18,0 +18,1 @@
++  await page.waitForTimeout(2000);
