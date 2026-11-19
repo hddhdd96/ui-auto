@@ -1,0 +1,44 @@
+name: Defect Demo
+
+# 결함 주입 모드 시연(수동 실행 전용).
+# 결함이 주입된 포털로 하네스를 실행해, 테스트가 결함을 검출하고 실패 원인이 Job Summary에 분류되어 표시되는 것을 보여준다.
+# 실패는 의도한 것이므로 job은 성공으로 끝난다(--allow-fail). 결과서(Excel·PPT)는 artifact로 올라간다.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 주입할 결함
+        type: choice
+        default: both
+        options:
+          - both
+          - quota-api-bypass
+          - resize-mismatch
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
+
+jobs:
+  demo:
+    name: 결함 주입 모드 시연 (${{ inputs.mode }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DEFECT_QUOTA_API_BYPASS: ${{ inputs.mode == 'both' || inputs.mode == 'quota-api-bypass' }}
+      DEFECT_RESIZE_MISMATCH: ${{ inputs.mode == 'both' || inputs.mode == 'resize-mismatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # 결함 재현·UI·네거티브 스위트를 돌린다. 쿼터 우회는 결함 재현과 네거티브가, 표시 사양 불일치는 결함 재현과 UI가 검출한다.
+      - name: 하네스 실행(결함 주입 모드)
+        run: npm run harness -- --suites defects,ui,negative --allow-fail
+      - name: 결과서 업로드
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: defect-demo-${{ inputs.mode }}-${{ github.run_number }}
+          path: artifacts/harness/
+          retention-days: 30

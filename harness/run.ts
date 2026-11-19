@@ -171,10 +171,19 @@ async function main() {
     const s = reportData.summary;
     if (process.env.GITHUB_STEP_SUMMARY) {
       // GitHub Actions Job Summary: 실행 대상, 결과 요약, 스위트별 결과, 실패 원인 분류
+      // 결함·Flaky 주입이 켜진 포털이면 실패가 의도된 것임을 맨 위에 밝힌다.
+      const mode = flags as { defects?: Record<string, boolean>; flaky?: Record<string, { enabled?: boolean } | number> };
+      const injected = [
+        ...Object.entries(mode.defects ?? {}).filter(([, on]) => on).map(([name]) => `결함 주입 ${name}`),
+        ...Object.entries(mode.flaky ?? {}).filter(([, v]) => typeof v === 'object' && v.enabled).map(([name]) => `Flaky 주입 ${name}`),
+      ];
       const summaryLines = [
         '## 테스트 하네스 실행 결과',
         '',
-        `대상 포털: ${environment.name} (${environment.baseUrl}) · 프로젝트: ${project.name} (${project.id})`,
+        ...(injected.length > 0
+          ? [`> **주입 모드 실행**: ${injected.join(', ')}. 이 실행의 실패는 결함을 검출하는지 보여주기 위해 의도한 것입니다.`, '']
+          : []),
+        `대상 포털: ${environment.name} (${environment.baseUrl}) · 프로젝트: ${project.name} (${project.id}) · 포털 모드: ${injected.length > 0 ? injected.join(', ') : '정상'}`,
         '',
         `전체 ${s.total} · 통과 ${s.passed} · 실패 ${s.failed} · 재시도 후 통과 ${s.flaky} · 실행 안 됨 ${s.notRun} · 통과율 ${s.passRate}%`,
         '',
