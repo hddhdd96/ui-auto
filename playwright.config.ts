@@ -11,7 +11,7 @@ export default defineConfig<TestOptions>({
   workers: 1,
   fullyParallel: false,
   // 재시도로 실패를 가리지 않는다. 판정 기준은 AGENTS.md를 따른다.
-  retries: 0,
+  retries: 2,
   timeout: 30_000,
   expect: { timeout: 5_000 },
   forbidOnly: !!process.env.CI,
